@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { Icons } from '@/components/icons'
 import { MainNav } from '@/components/main-nav'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { UserNav } from '@/components/user-nav'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isClient = useIsClient()
@@ -43,6 +44,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Link>
             <MainNav />
           </div>
+          <UserNav />
         </header>
         <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
         <footer className="border-t py-4 text-center text-sm text-muted-foreground">

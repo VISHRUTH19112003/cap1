@@ -1,9 +1,11 @@
+
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { Auth, getAuth } from 'firebase/auth';
-import { Firestore, getFirestore } from 'firebase/firestore'
+import { Firestore, getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase(): { firebaseApp: FirebaseApp, auth: Auth, firestore: Firestore } {
@@ -33,10 +35,14 @@ export function initializeFirebase(): { firebaseApp: FirebaseApp, auth: Auth, fi
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
+  const firestore = getFirestore(firebaseApp);
+  const auth = getAuth(firebaseApp);
+  const storage = getStorage(firebaseApp);
   return {
     firebaseApp,
-    auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp)
+    auth,
+    firestore,
+    storage
   };
 }
 

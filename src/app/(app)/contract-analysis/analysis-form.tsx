@@ -4,7 +4,7 @@
 import * as React from 'react'
 import { summarizeContractAndIdentifyRisks, type SummarizeContractAndIdentifyRisksOutput } from '@/ai/flows/summarize-contract-and-identify-risks'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Bot, Loader2, Download } from 'lucide-react'
+import { Bot, Loader2, Download, BookOpen } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -14,6 +14,18 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
+import { useUser, useFirestore } from '@/firebase'
+import { collection, query, onSnapshot, doc, getDoc } from 'firebase/firestore'
+import { getStorage, ref, getBytes } from "firebase/storage";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
 
 const formSchema = z.object({
   contract: z.string().min(100, {
@@ -21,10 +33,19 @@ const formSchema = z.object({
   }),
 })
 
+interface Document {
+  id: string;
+  filename: string;
+  storagePath: string;
+}
+
 export function AnalysisForm() {
   const [analysisResult, setAnalysisResult] = React.useState<SummarizeContractAndIdentifyRisksOutput | null>(null)
   const [isLoading, setIsLoading] = React.useState(false)
   const { toast } = useToast()
+  const { user } = useUser()
+  const firestore = useFirestore()
+  const [documents, setDocuments] = React.useState<Document[]>([])
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -32,6 +53,16 @@ export function AnalysisForm() {
       contract: '',
     },
   })
+
+  React.useEffect(() => {
+    if (!user || !firestore) return;
+    const docsQuery = query(collection(firestore, `users/${user.uid}/documents`));
+    const unsubscribe = onSnapshot(docsQuery, (snapshot) => {
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Document));
+      setDocuments(docs);
+    });
+    return () => unsubscribe();
+  }, [user, firestore]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
@@ -56,17 +87,14 @@ export function AnalysisForm() {
 
     const reportContent = `
 NyayaGPT Analysis Report
-
 [Key Clause Summary]
 ${analysisResult.summary}
-
 ---
-
 [Risk & Revision Report]
 ${analysisResult.riskReport}
     `
 
-    const blob = new Blob([reportContent.trim()], { type: 'text/plain;charset=utf-8' })
+    const blob = new Blob([reportContent.trim()], { type: 'text/plain;charset=utf-t' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -76,6 +104,27 @@ ${analysisResult.riskReport}
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
   }
+  
+  const handleSelectDocument = async (docId: string) => {
+    if (!docId || !user || !firestore) return;
+    
+    const docRef = doc(firestore, `users/${user.uid}/documents`, docId);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      const storage = getStorage();
+      const fileRef = ref(storage, docSnap.data().storagePath);
+      try {
+        const bytes = await getBytes(fileRef);
+        const text = new TextDecoder().decode(bytes);
+        form.setValue('contract', text);
+        toast({ title: 'Success', description: 'Document content loaded.' });
+      } catch (e: any) {
+         console.error("Error fetching document content:", e);
+         toast({ variant: 'destructive', title: 'Error', description: 'Could not load document content.' });
+      }
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
@@ -83,29 +132,46 @@ ${analysisResult.riskReport}
         <CardHeader>
           <CardTitle>Analyze a Contract</CardTitle>
           <CardDescription>
-            Paste contract text into the field below to begin the analysis.
+            Paste contract text or select an uploaded document to begin the analysis.
           </CardDescription>
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <CardContent>
-              <FormField
-                control={form.control}
-                name="contract"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="sr-only">Contract Text</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Paste your contract text here..."
-                        className="min-h-[400px] resize-y"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-4">
+                 <FormItem>
+                   <FormLabel>Select an existing document</FormLabel>
+                   <Select onValueChange={handleSelectDocument}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a document to load its content" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {documents.map(doc => (
+                          <SelectItem key={doc.id} value={doc.id}>{doc.filename}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                 </FormItem>
+                <FormField
+                  control={form.control}
+                  name="contract"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contract Text</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Paste your contract text here or select a document above."
+                          className="min-h-[400px] resize-y"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </CardContent>
             <CardFooter>
               <Button type="submit" disabled={isLoading}>
