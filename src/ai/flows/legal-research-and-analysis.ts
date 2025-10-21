@@ -18,14 +18,14 @@ const FilterSchema = z.object({
   const: z.boolean().optional(),
 });
 
-export const LegalResearchAndAnalysisInputSchema = z.object({
+const LegalResearchAndAnalysisInputSchema = z.object({
   query: z.string().describe("The user's natural language search query, which may be a question."),
   filters: FilterSchema.describe('Filters to apply to the search.'),
 });
 export type LegalResearchAndAnalysisInput = z.infer<typeof LegalResearchAndAnalysisInputSchema>;
 
 
-export const LegalResearchAndAnalysisOutputSchema = z.object({
+const LegalResearchAndAnalysisOutputSchema = z.object({
   title: z.string().describe('The title of the most relevant legal document or case found.'),
   summary: z.string().describe('A detailed summary of the legal document.'),
   answer: z.string().describe('The specific answer to the user\'s question based on the document.'),
