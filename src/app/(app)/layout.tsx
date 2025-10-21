@@ -1,3 +1,4 @@
+
 'use client'
 
 import * as React from 'react'
@@ -10,7 +11,6 @@ import { useUser } from '@/firebase'
 import { cn } from '@/lib/utils'
 import { Icons } from '@/components/icons'
 import { MainNav } from '@/components/main-nav'
-import { UserNav } from '@/components/user-nav'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -42,10 +42,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <span className="font-bold">NyayaGPT</span>
             </Link>
             <MainNav />
-          </div>
-
-          <div className="flex items-center gap-4">
-            <UserNav />
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
