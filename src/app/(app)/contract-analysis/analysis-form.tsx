@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { summarizeContractAndIdentifyRisks, type SummarizeContractAndIdentifyRisksOutput } from '@/ai/flows/summarize-contract-and-identify-risks'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Bot, Loader2 } from 'lucide-react'
+import { Bot, Loader2, Download } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -50,6 +50,32 @@ export function AnalysisForm() {
     }
   }
 
+  const handleDownload = () => {
+    if (!analysisResult) return
+
+    const reportContent = `
+# NyayaGPT Analysis Report
+
+## 1. Key Clause Summary
+${analysisResult.summary}
+
+---
+
+## 2. Risk & Revision Report
+${analysisResult.riskReport}
+    `
+
+    const blob = new Blob([reportContent.trim()], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'analysis-report.md'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
       <Card>
@@ -91,11 +117,19 @@ export function AnalysisForm() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Analysis Report</CardTitle>
-          <CardDescription>
-            The AI-generated summary and risk report will appear here.
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between">
+          <div>
+            <CardTitle>Analysis Report</CardTitle>
+            <CardDescription>
+              The AI-generated summary and risk report will appear here.
+            </CardDescription>
+          </div>
+          {analysisResult && (
+            <Button variant="outline" size="icon" onClick={handleDownload}>
+              <Download className="h-4 w-4" />
+              <span className="sr-only">Download Report</span>
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {isLoading && (

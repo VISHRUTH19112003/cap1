@@ -2,7 +2,7 @@
 'use client'
 
 import * as React from 'react'
-import { MoreHorizontal, PlusCircle, Upload, Loader2, Bot } from 'lucide-react'
+import { MoreHorizontal, PlusCircle, Upload, Loader2, Bot, Download } from 'lucide-react'
 import { summarizeContractAndIdentifyRisks, type SummarizeContractAndIdentifyRisksOutput } from '@/ai/flows/summarize-contract-and-identify-risks'
 
 import { Badge } from '@/components/ui/badge'
@@ -125,6 +125,32 @@ export default function DocumentsPage() {
     } finally {
       setIsAnalyzing(false)
     }
+  }
+
+  const handleDownload = () => {
+    if (!analysisResult || !analyzingDoc) return
+
+    const reportContent = `
+# NyayaGPT Analysis Report for ${analyzingDoc.name}
+
+## 1. Key Clause Summary
+${analysisResult.summary}
+
+---
+
+## 2. Risk & Revision Report
+${analysisResult.riskReport}
+    `
+
+    const blob = new Blob([reportContent.trim()], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${analyzingDoc.name.split('.')[0]}-analysis-report.md`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   const closeAnalysisDialog = () => {
@@ -298,11 +324,19 @@ export default function DocumentsPage() {
       </Dialog>
       <Dialog open={!!analyzingDoc} onOpenChange={(isOpen) => !isOpen && closeAnalysisDialog()}>
         <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Analysis Report: {analyzingDoc?.name}</DialogTitle>
-            <DialogDescription>
-              The AI-generated summary and risk report are below.
-            </DialogDescription>
+          <DialogHeader className="flex-row justify-between items-start">
+            <div>
+              <DialogTitle>Analysis Report: {analyzingDoc?.name}</DialogTitle>
+              <DialogDescription>
+                The AI-generated summary and risk report are below.
+              </DialogDescription>
+            </div>
+            {analysisResult && (
+              <Button variant="outline" size="icon" onClick={handleDownload}>
+                <Download className="h-4 w-4" />
+                <span className="sr-only">Download Report</span>
+              </Button>
+            )}
           </DialogHeader>
           <ScrollArea className="h-[60vh] rounded-md border p-4">
             {isAnalyzing && (
@@ -328,7 +362,7 @@ export default function DocumentsPage() {
               </Accordion>
             ) : (
               !isAnalyzing && (
-                <div className="flex h-full flex-col items-center justify-center text-center">
+                <div className="h-full flex-col items-center justify-center text-center">
                   <Bot className="h-12 w-12 text-muted-foreground" />
                   <p className="mt-4 text-muted-foreground">
                     Your report is pending analysis.
