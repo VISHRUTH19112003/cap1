@@ -2,9 +2,9 @@
 'use client'
 
 import * as React from 'react';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useStorage } from '@/firebase';
 import { collection, query, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,6 +31,7 @@ interface Document {
 export function DocumentManager() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const storage = useStorage();
   const [documents, setDocuments] = React.useState<Document[]>([]);
   const [isLoadingDocs, setIsLoadingDocs] = React.useState(true);
   const [isUploading, setIsUploading] = React.useState(false);
@@ -59,14 +60,13 @@ export function DocumentManager() {
   }, [user, firestore, toast]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !storage) return;
     const file = values.file[0];
     if (!file) return;
 
     setIsUploading(true);
     setUploadProgress(0);
 
-    const storage = getStorage();
     const storagePath = `users/${user.uid}/documents/${Date.now()}_${file.name}`;
     const storageRef = ref(storage, storagePath);
     const uploadTask = uploadBytesResumable(storageRef, file);
@@ -101,10 +101,9 @@ export function DocumentManager() {
   }
 
   async function handleDelete(docToDelete: Document) {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !storage) return;
 
     const docRef = doc(firestore, `users/${user.uid}/documents`, docToDelete.id);
-    const storage = getStorage();
     const storageRef = ref(storage, docToDelete.storagePath);
 
     try {

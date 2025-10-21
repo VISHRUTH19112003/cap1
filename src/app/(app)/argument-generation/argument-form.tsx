@@ -14,9 +14,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { useUser, useFirestore } from '@/firebase'
+import { useUser, useFirestore, useStorage } from '@/firebase'
 import { collection, query, onSnapshot, doc, getDoc } from 'firebase/firestore'
-import { getStorage, ref, getBytes } from "firebase/storage";
+import { ref, getBytes } from "firebase/storage";
 
 import {
   Select,
@@ -45,6 +45,7 @@ export function ArgumentForm() {
   const { toast } = useToast()
   const { user } = useUser()
   const firestore = useFirestore()
+  const storage = useStorage()
   const [documents, setDocuments] = React.useState<Document[]>([])
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -83,13 +84,12 @@ export function ArgumentForm() {
   }
   
   const handleSelectDocument = async (docId: string) => {
-    if (!docId || !user || !firestore) return;
+    if (!docId || !user || !firestore || !storage) return;
     
     const docRef = doc(firestore, `users/${user.uid}/documents`, docId);
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
-      const storage = getStorage();
       const fileRef = ref(storage, docSnap.data().storagePath);
       try {
         const bytes = await getBytes(fileRef);
