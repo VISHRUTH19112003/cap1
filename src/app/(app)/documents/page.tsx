@@ -94,7 +94,16 @@ export default function DocumentsPage() {
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
-      setSelectedFile(event.target.files[0])
+      const file = event.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        setSelectedFile(file);
+        // This is a mock; in a real app you'd likely not store file content in the component this way
+        // But for the sake of this example, we'll attach it to the file object.
+        (file as any)._content = content;
+      };
+      reader.readAsText(file);
     }
   }
 
@@ -104,7 +113,7 @@ export default function DocumentsPage() {
         name: selectedFile.name,
         status: 'Pending',
         date: new Date().toISOString().split('T')[0],
-        content: `Content of ${selectedFile.name}`,
+        content: (selectedFile as any)._content || `Content of ${selectedFile.name}`,
       }
       setDocuments((prevDocs) => [newDocument, ...prevDocs])
       toast({
@@ -272,7 +281,7 @@ export default function DocumentsPage() {
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="h-[60vh] rounded-md border bg-muted/30 p-4">
-             <pre className="whitespace-pre-wrap font-sans text-sm">
+             <pre className="whitespace-pre-wrap font-sans text-sm text-foreground">
               {previewingDoc?.content}
              </pre>
           </ScrollArea>
@@ -284,3 +293,5 @@ export default function DocumentsPage() {
     </>
   )
 }
+
+    
