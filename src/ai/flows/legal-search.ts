@@ -18,7 +18,7 @@ const FilterSchema = z.object({
   const: z.boolean().optional(),
 });
 
-export const LegalSearchInputSchema = z.object({
+const LegalSearchInputSchema = z.object({
   query: z.string().describe("The user's natural language search query."),
   filters: FilterSchema.describe('Filters to apply to the search.'),
 });
@@ -33,7 +33,7 @@ const SearchResultSchema = z.object({
   url: z.string().url().describe('The URL to the full document.'),
 });
 
-export const LegalSearchOutputSchema = z.array(SearchResultSchema);
+const LegalSearchOutputSchema = z.array(SearchResultSchema);
 export type LegalSearchOutput = z.infer<typeof LegalSearchOutputSchema>;
 
 
