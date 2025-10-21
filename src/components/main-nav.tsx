@@ -39,7 +39,7 @@ export function MainNav() {
 
     return (
       <Link href={href} key={href} className={cn(
-        "text-sm font-medium transition-colors hover:text-primary",
+        "text-base font-medium transition-colors hover:text-primary",
         isActive ? "text-primary" : "text-muted-foreground"
       )}>
         {label}
