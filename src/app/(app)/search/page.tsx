@@ -9,7 +9,7 @@ import {
 } from '@/ai/flows/legal-search';
 import { chatAboutLegalDocument, type ChatAboutLegalDocumentInput } from '@/ai/flows/chat-about-legal-document';
 import { summarizeLegalDocument } from '@/ai/flows/summarize-legal-document';
-import { Bot, ExternalLink, Loader2, MessageSquare, Search as SearchIcon, Send } from 'lucide-react';
+import { Bot, ExternalLink, Loader2, MessageSquare, Search as SearchIcon, Send, FileText } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -70,14 +70,16 @@ export default function LegalSearchPage() {
   const [results, setResults] = React.useState<LegalSearchOutput | null>(null);
   const { toast } = useToast();
 
-  const [activeDoc, setActiveDoc] = React.useState<SearchResult | null>(null);
+  const [summarizingDoc, setSummarizingDoc] = React.useState<SearchResult | null>(null);
+  const [chattingDoc, setChattingDoc] = React.useState<SearchResult | null>(null);
+
   const [isSummarizing, setIsSummarizing] = React.useState(false);
   const [summary, setSummary] = React.useState<string | null>(null);
 
   const [chatHistory, setChatHistory] = React.useState<ChatMessage[]>([]);
   const [chatQuery, setChatQuery] = React.useState('');
   const [isChatting, setIsChatting] = React.useState(false);
-
+  
   const handleFilterChange = (id: FilterId, checked: boolean) => {
     setFilters((prev) => ({ ...prev, [id]: checked }));
   };
@@ -120,10 +122,9 @@ export default function LegalSearchPage() {
   };
 
   const handleOpenSummaryDialog = async (doc: SearchResult) => {
-    setActiveDoc(doc);
+    setSummarizingDoc(doc);
     setIsSummarizing(true);
     setSummary(null);
-    setChatHistory([]);
     try {
       const result = await summarizeLegalDocument(doc);
       setSummary(result.summary);
@@ -134,7 +135,28 @@ export default function LegalSearchPage() {
         title: 'Summarization Failed',
         description: 'Could not generate a summary for this document.',
       });
-      closeDialog();
+      closeSummaryDialog();
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+
+  const handleOpenChatDialog = async (doc: SearchResult) => {
+    setChattingDoc(doc);
+    setIsSummarizing(true); // Re-use for initial summary loading in chat
+    setSummary(null);
+    setChatHistory([]);
+    try {
+      const result = await summarizeLegalDocument(doc);
+      setSummary(result.summary);
+    } catch (error) {
+      console.error('Error summarizing document for chat:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Initialization Failed',
+        description: 'Could not load document summary for chat.',
+      });
+      closeChatDialog();
     } finally {
       setIsSummarizing(false);
     }
@@ -142,7 +164,7 @@ export default function LegalSearchPage() {
 
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatQuery.trim() || !summary || !activeDoc) return;
+    if (!chatQuery.trim() || !summary || !chattingDoc) return;
 
     const newHistory: ChatMessage[] = [
       ...chatHistory,
@@ -154,7 +176,7 @@ export default function LegalSearchPage() {
 
     try {
       const chatInput: ChatAboutLegalDocumentInput = {
-        title: activeDoc.title,
+        title: chattingDoc.title,
         summary: summary,
         question: chatQuery,
       };
@@ -177,8 +199,14 @@ export default function LegalSearchPage() {
     }
   };
   
-  const closeDialog = () => {
-    setActiveDoc(null);
+  const closeSummaryDialog = () => {
+    setSummarizingDoc(null);
+    setSummary(null);
+    setIsSummarizing(false);
+  };
+  
+  const closeChatDialog = () => {
+    setChattingDoc(null);
     setSummary(null);
     setIsSummarizing(false);
     setChatHistory([]);
@@ -316,8 +344,16 @@ export default function LegalSearchPage() {
                               size="sm"
                               onClick={() => handleOpenSummaryDialog(result)}
                             >
+                              <FileText className="mr-2 h-3 w-3" />
+                              Summarize
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => handleOpenChatDialog(result)}
+                            >
                               <MessageSquare className="mr-2 h-3 w-3" />
-                              Summarize & Chat
+                              Chat
                             </Button>
                           </div>
                         </div>
@@ -347,15 +383,17 @@ export default function LegalSearchPage() {
           </div>
         </div>
       </div>
-      <Dialog open={!!activeDoc} onOpenChange={(isOpen) => !isOpen && closeDialog()}>
+      
+      {/* Summary Dialog */}
+      <Dialog open={!!summarizingDoc} onOpenChange={(isOpen) => !isOpen && closeSummaryDialog()}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>{activeDoc?.title}</DialogTitle>
+            <DialogTitle>{summarizingDoc?.title}</DialogTitle>
             <DialogDescription>
-              AI-generated summary and chat about this document.
+              AI-generated summary of this document.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="py-4">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Summary</CardTitle>
@@ -372,7 +410,25 @@ export default function LegalSearchPage() {
                 )}
               </CardContent>
             </Card>
-
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeSummaryDialog}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Chat Dialog */}
+      <Dialog open={!!chattingDoc} onOpenChange={(isOpen) => !isOpen && closeChatDialog()}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{chattingDoc?.title}</DialogTitle>
+            <DialogDescription>
+              Chat about this document.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Chat</CardTitle>
@@ -380,6 +436,21 @@ export default function LegalSearchPage() {
               <CardContent>
                 <ScrollArea className="h-48 pr-4">
                   <div className="space-y-4">
+                    {isSummarizing ? (
+                      <div className='flex items-center gap-3'>
+                         <Bot className="h-5 w-5 flex-shrink-0" />
+                         <div className='bg-muted rounded-lg p-3'>
+                           <p className="text-sm text-muted-foreground">Generating summary to begin...</p>
+                         </div>
+                       </div>
+                    ) : (
+                      <div className='flex items-start gap-3'>
+                         <Bot className="h-5 w-5 flex-shrink-0" />
+                         <div className='bg-muted rounded-lg p-3 text-sm'>
+                          <p>I have summarized the document. Ask me anything about it.</p>
+                         </div>
+                       </div>
+                    )}
                     {chatHistory.map((msg, index) => (
                       <div
                         key={index}
@@ -428,7 +499,7 @@ export default function LegalSearchPage() {
             </Card>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={closeDialog}>
+            <Button variant="outline" onClick={closeChatDialog}>
               Close
             </Button>
           </DialogFooter>
