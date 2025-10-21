@@ -102,8 +102,7 @@ export default function LegalSearchPage() {
           AI-Powered Legal Search
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Search your legal documents using natural language, with a focus on
-          Indian law.
+          Search public Indian legal precedents using natural language.
         </p>
       </div>
 
@@ -178,7 +177,7 @@ export default function LegalSearchPage() {
             <CardHeader>
               <CardTitle>Search Results</CardTitle>
               <CardDescription>
-                Relevant clauses and documents will appear here.
+                Relevant cases and statutes from Indian Kanoon will appear here.
               </CardDescription>
             </CardHeader>
             <CardContent>

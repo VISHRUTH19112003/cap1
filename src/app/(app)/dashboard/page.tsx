@@ -26,7 +26,7 @@ const features = [
   },
   {
     title: 'Legal Search',
-    description: 'Use natural language to search through your legal documents, with results filtered for Indian law.',
+    description: 'Use natural language to search Indian legal precedents, cases and statutes.',
     href: '/search',
     icon: <Search className="mb-4 h-8 w-8 text-accent" />,
   },
