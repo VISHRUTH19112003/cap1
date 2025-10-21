@@ -14,11 +14,14 @@ import {z} from 'genkit';
 const GenerateLegalArgumentInputSchema = z.string().describe('A prompt describing the legal situation for which an argument is to be generated.');
 export type GenerateLegalArgumentInput = z.infer<typeof GenerateLegalArgumentInputSchema>;
 
-const GenerateLegalArgumentOutputSchema = z.string().describe('A structured legal argument citing relevant Indian legal authorities.');
+const GenerateLegalArgumentOutputSchema = z.object({
+  argument: z.string().describe('A structured legal argument citing relevant Indian legal authorities.'),
+});
 export type GenerateLegalArgumentOutput = z.infer<typeof GenerateLegalArgumentOutputSchema>;
 
-export async function generateLegalArgument(input: GenerateLegalArgumentInput): Promise<GenerateLegalArgumentOutput> {
-  return generateLegalArgumentFlow(input);
+export async function generateLegalArgument(input: GenerateLegalArgumentInput): Promise<string> {
+  const result = await generateLegalArgumentFlow(input);
+  return result.argument;
 }
 
 const prompt = ai.definePrompt({
@@ -35,7 +38,7 @@ const generateLegalArgumentFlow = ai.defineFlow(
     outputSchema: GenerateLegalArgumentOutputSchema,
   },
   async input => {
-    const {text} = await prompt(input);
-    return text!;
+    const {output} = await prompt(input);
+    return output!;
   }
 );
