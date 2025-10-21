@@ -5,14 +5,14 @@ import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useIsClient } from 'usehooks-ts'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Settings } from 'lucide-react'
 
 import { useUser } from '@/firebase'
 import { cn } from '@/lib/utils'
 import { Icons } from '@/components/icons'
 import { MainNav } from '@/components/main-nav'
-import { TooltipProvider } from '@/components/ui/tooltip'
-import { UserNav } from '@/components/user-nav'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Button } from '@/components/ui/button'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isClient = useIsClient()
@@ -44,7 +44,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Link>
             <MainNav />
           </div>
-          <UserNav />
+          <div className="flex items-center gap-4">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" asChild>
+                  <Link href="/settings">
+                    <Settings className="h-5 w-5" />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Settings</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
         </header>
         <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
         <footer className="border-t py-4 text-center text-sm text-muted-foreground">
