@@ -45,6 +45,7 @@ export function DocumentManager() {
   React.useEffect(() => {
     if (!user || !firestore) return;
 
+    setIsLoadingDocs(true);
     const docsQuery = query(collection(firestore, `users/${user.uid}/documents`));
     const unsubscribe = onSnapshot(docsQuery, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Document));
@@ -60,7 +61,10 @@ export function DocumentManager() {
   }, [user, firestore, toast]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!user || !firestore || !storage) return;
+    if (!user || !firestore || !storage) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Authentication or database service not available.' });
+      return;
+    }
     const file = values.file[0];
     if (!file) return;
 
@@ -95,24 +99,27 @@ export function DocumentManager() {
 
         toast({ title: 'Success', description: 'Document uploaded successfully.' });
         setIsUploading(false);
-        form.reset();
+        form.reset({ file: undefined });
       }
     );
   }
 
   async function handleDelete(docToDelete: Document) {
-    if (!user || !firestore || !storage) return;
+    if (!user || !firestore || !storage) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Authentication or database service not available.' });
+      return;
+    }
 
     const docRef = doc(firestore, `users/${user.uid}/documents`, docToDelete.id);
     const storageRef = ref(storage, docToDelete.storagePath);
 
     try {
-      await deleteDoc(docRef);
       await deleteObject(storageRef);
+      await deleteDoc(docRef);
       toast({ title: 'Success', description: `${docToDelete.filename} has been deleted.` });
     } catch (error) {
       console.error("Delete error:", error);
-      toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete the document.' });
+      toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete the document. It may have already been deleted.' });
     }
   }
 

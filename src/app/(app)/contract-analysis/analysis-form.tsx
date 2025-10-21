@@ -4,7 +4,7 @@
 import * as React from 'react'
 import { summarizeContractAndIdentifyRisks, type SummarizeContractAndIdentifyRisksOutput } from '@/ai/flows/summarize-contract-and-identify-risks'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Bot, Loader2, Download, BookOpen } from 'lucide-react'
+import { Bot, Loader2, Download } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 

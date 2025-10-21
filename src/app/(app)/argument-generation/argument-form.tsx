@@ -4,7 +4,7 @@
 import * as React from 'react'
 import { generateLegalArgument } from '@/ai/flows/generate-legal-argument'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Bot, Loader2, Sparkles, BookOpen } from 'lucide-react'
+import { Bot, Loader2, Sparkles } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -95,7 +95,7 @@ export function ArgumentForm() {
         const bytes = await getBytes(fileRef);
         const text = new TextDecoder().decode(bytes);
         const currentPrompt = form.getValues('prompt');
-        form.setValue('prompt', `${currentPrompt}\n\n--- Document Content ---\n${text}`);
+        form.setValue('prompt', `${currentPrompt}\\n\\n--- Document Content ---\\n${text}`);
         toast({ title: 'Success', description: 'Document content appended to prompt.' });
       } catch (e: any) {
         console.error("Error fetching document content:", e);
