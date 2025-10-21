@@ -22,8 +22,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <SidebarProvider>
-      <TooltipProvider>
+    <TooltipProvider>
+      <SidebarProvider>
         <div className="relative flex min-h-screen">
           <aside
             className={cn(
@@ -71,7 +71,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </main>
           </div>
         </div>
-      </TooltipProvider>
-    </SidebarProvider>
+      </SidebarProvider>
+    </TooltipProvider>
   )
 }

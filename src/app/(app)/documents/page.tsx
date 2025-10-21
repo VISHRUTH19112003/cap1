@@ -1,4 +1,11 @@
-import { MoreHorizontal, PlusCircle } from 'lucide-react'
+'use client'
+
+import * as React from 'react'
+import {
+  MoreHorizontal,
+  PlusCircle,
+  Upload,
+} from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,12 +18,23 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Table,
   TableBody,
@@ -25,8 +43,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useToast } from '@/hooks/use-toast'
 
-const documents = [
+type Document = {
+  name: string
+  status: 'Analyzed' | 'Pending'
+  date: string
+}
+
+const initialDocuments: Document[] = [
   {
     name: 'Real Estate Lease Agreement.docx',
     status: 'Analyzed',
@@ -50,19 +75,89 @@ const documents = [
 ]
 
 export default function DocumentsPage() {
+  const [documents, setDocuments] = React.useState<Document[]>(initialDocuments)
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = React.useState(false)
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
+  const { toast } = useToast()
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files.length > 0) {
+      setSelectedFile(event.target.files[0])
+    }
+  }
+
+  const handleUpload = () => {
+    if (selectedFile) {
+      const newDocument: Document = {
+        name: selectedFile.name,
+        status: 'Pending',
+        date: new Date().toISOString().split('T')[0],
+      }
+      setDocuments((prevDocs) => [newDocument, ...prevDocs])
+      toast({
+        title: 'File Uploaded',
+        description: `${selectedFile.name} has been successfully uploaded.`,
+      })
+      setSelectedFile(null)
+      setIsUploadDialogOpen(false)
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'No File Selected',
+        description: 'Please select a file to upload.',
+      })
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Document Management</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Document Management
+          </h1>
           <p className="mt-2 text-muted-foreground">
             Upload, view, and manage your legal documents.
           </p>
         </div>
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Upload Document
-        </Button>
+        <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Upload Document
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Upload Document</DialogTitle>
+              <DialogDescription>
+                Select a document from your device to upload for analysis.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid w-full max-w-sm items-center gap-1.5">
+                <Label htmlFor="document">Document</Label>
+                <div className="relative">
+                   <Input
+                    id="document"
+                    type="file"
+                    className="cursor-pointer"
+                    onChange={handleFileChange}
+                  />
+                </div>
+                {selectedFile && (
+                  <p className="text-sm text-muted-foreground mt-2">Selected: {selectedFile.name}</p>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsUploadDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleUpload}>
+                <Upload className="mr-2 h-4 w-4" /> Upload
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
       <Card>
         <CardHeader>
@@ -91,8 +186,14 @@ export default function DocumentsPage() {
                   <TableCell className="font-medium">{doc.name}</TableCell>
                   <TableCell>
                     <Badge
-                      variant={doc.status === 'Analyzed' ? 'default' : 'secondary'}
-                      className={doc.status === 'Analyzed' ? 'bg-green-600/20 text-green-700 dark:bg-green-700/30 dark:text-green-400' : ''}
+                      variant={
+                        doc.status === 'Analyzed' ? 'default' : 'secondary'
+                      }
+                      className={
+                        doc.status === 'Analyzed'
+                          ? 'bg-green-600/20 text-green-700 dark:bg-green-700/30 dark:text-green-400'
+                          : ''
+                      }
                     >
                       {doc.status}
                     </Badge>
@@ -129,7 +230,8 @@ export default function DocumentsPage() {
         </CardContent>
         <CardFooter>
           <div className="text-xs text-muted-foreground">
-            Showing <strong>1-4</strong> of <strong>4</strong> documents
+            Showing <strong>1-{documents.length}</strong> of{' '}
+            <strong>{documents.length}</strong> documents
           </div>
         </CardFooter>
       </Card>
