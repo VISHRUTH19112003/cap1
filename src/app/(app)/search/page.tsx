@@ -3,32 +3,32 @@
 
 import * as React from 'react';
 import {
-  legalSearch,
-  type LegalSearchInput,
-  type LegalSearchOutput,
-} from '@/ai/flows/legal-search';
-import { chatAboutLegalDocument, type ChatAboutLegalDocumentInput } from '@/ai/flows/chat-about-legal-document';
-import { summarizeLegalDocument } from '@/ai/flows/summarize-legal-document';
-import { Bot, ExternalLink, Loader2, MessageSquare, Search as SearchIcon, Send, FileText } from 'lucide-react';
+  legalResearchAndAnalysis,
+  type LegalResearchAndAnalysisInput,
+  type LegalResearchAndAnalysisOutput,
+} from '@/ai/flows/legal-research-and-analysis';
+import {
+  chatAboutLegalDocument,
+  type ChatAboutLegalDocumentInput,
+} from '@/ai/flows/chat-about-legal-document';
+import {
+  Bot,
+  ExternalLink,
+  Loader2,
+  Send,
+  Search as SearchIcon,
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -43,10 +43,11 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
 
 type FilterId = 'ipc' | 'crpc' | 'cpc' | 'contract-act' | 'const';
-type SearchResult = LegalSearchOutput[0];
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 const filterOptions: { id: FilterId; label: string }[] = [
@@ -67,19 +68,13 @@ export default function LegalSearchPage() {
     const: false,
   });
   const [isLoading, setIsLoading] = React.useState(false);
-  const [results, setResults] = React.useState<LegalSearchOutput | null>(null);
+  const [result, setResult] = React.useState<LegalResearchAndAnalysisOutput | null>(null);
   const { toast } = useToast();
-
-  const [summarizingDoc, setSummarizingDoc] = React.useState<SearchResult | null>(null);
-  const [chattingDoc, setChattingDoc] = React.useState<SearchResult | null>(null);
-
-  const [isSummarizing, setIsSummarizing] = React.useState(false);
-  const [summary, setSummary] = React.useState<string | null>(null);
 
   const [chatHistory, setChatHistory] = React.useState<ChatMessage[]>([]);
   const [chatQuery, setChatQuery] = React.useState('');
   const [isChatting, setIsChatting] = React.useState(false);
-  
+
   const handleFilterChange = (id: FilterId, checked: boolean) => {
     setFilters((prev) => ({ ...prev, [id]: checked }));
   };
@@ -96,9 +91,10 @@ export default function LegalSearchPage() {
     }
 
     setIsLoading(true);
-    setResults(null);
+    setResult(null);
+    setChatHistory([]);
 
-    const searchInput: LegalSearchInput = {
+    const searchInput: LegalResearchAndAnalysisInput = {
       query,
       filters: {
         ...filters,
@@ -106,8 +102,8 @@ export default function LegalSearchPage() {
     };
 
     try {
-      const searchResults = await legalSearch(searchInput);
-      setResults(searchResults);
+      const searchResult = await legalResearchAndAnalysis(searchInput);
+      setResult(searchResult);
     } catch (error) {
       console.error('Error performing legal search:', error);
       toast({
@@ -121,69 +117,29 @@ export default function LegalSearchPage() {
     }
   };
 
-  const handleOpenSummaryDialog = async (doc: SearchResult) => {
-    setSummarizingDoc(doc);
-    setIsSummarizing(true);
-    setSummary(null);
-    try {
-      const result = await summarizeLegalDocument(doc);
-      setSummary(result.summary);
-    } catch (error) {
-      console.error('Error summarizing document:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Summarization Failed',
-        description: 'Could not generate a summary for this document.',
-      });
-      closeSummaryDialog();
-    } finally {
-      setIsSummarizing(false);
-    }
-  };
-
-  const handleOpenChatDialog = async (doc: SearchResult) => {
-    setChattingDoc(doc);
-    setIsSummarizing(true); // Re-use for initial summary loading in chat
-    setSummary(null);
-    setChatHistory([]);
-    try {
-      const result = await summarizeLegalDocument(doc);
-      setSummary(result.summary);
-    } catch (error) {
-      console.error('Error summarizing document for chat:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Initialization Failed',
-        description: 'Could not load document summary for chat.',
-      });
-      closeChatDialog();
-    } finally {
-      setIsSummarizing(false);
-    }
-  };
-
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatQuery.trim() || !summary || !chattingDoc) return;
+    if (!chatQuery.trim() || !result) return;
 
     const newHistory: ChatMessage[] = [
       ...chatHistory,
       { role: 'user', content: chatQuery },
     ];
     setChatHistory(newHistory);
+    const currentQuery = chatQuery;
     setChatQuery('');
     setIsChatting(true);
 
     try {
       const chatInput: ChatAboutLegalDocumentInput = {
-        title: chattingDoc.title,
-        summary: summary,
-        question: chatQuery,
+        title: result.title,
+        summary: result.summary,
+        question: currentQuery,
       };
-      const result = await chatAboutLegalDocument(chatInput);
+      const chatResponse = await chatAboutLegalDocument(chatInput);
       setChatHistory([
         ...newHistory,
-        { role: 'assistant', content: result.answer },
+        { role: 'assistant', content: chatResponse.answer },
       ]);
     } catch (error) {
       console.error('Error in chat:', error);
@@ -198,313 +154,200 @@ export default function LegalSearchPage() {
       setIsChatting(false);
     }
   };
-  
-  const closeSummaryDialog = () => {
-    setSummarizingDoc(null);
-    setSummary(null);
-    setIsSummarizing(false);
-  };
-  
-  const closeChatDialog = () => {
-    setChattingDoc(null);
-    setSummary(null);
-    setIsSummarizing(false);
-    setChatHistory([]);
-    setChatQuery('');
-  };
 
   return (
-    <>
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            AI-Powered Legal Search
-          </h1>
-          <p className="mt-2 text-muted-foreground">
-            Search public Indian legal precedents using natural language.
-          </p>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">
+          AI-Powered Legal Research Assistant
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          Ask a question about Indian law, and get a summarized answer with case details.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
+        <div className="md:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle>Filters</CardTitle>
+              <CardDescription>Refine your research.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="jurisdiction">Jurisdiction</Label>
+                <Select defaultValue="india">
+                  <SelectTrigger id="jurisdiction">
+                    <SelectValue placeholder="Select jurisdiction" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="india">India</SelectItem>
+                    <SelectItem value="other" disabled>
+                      Other (coming soon)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <Label>Legal Taxonomy</Label>
+                {filterOptions.map(({ id, label }) => (
+                  <div key={id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={id}
+                      checked={filters[id]}
+                      onCheckedChange={(checked) =>
+                        handleFilterChange(id, !!checked)
+                      }
+                    />
+                    <Label htmlFor={id} className="font-normal">
+                      {label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
-          <div className="md:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle>Filters</CardTitle>
-                <CardDescription>Refine your search.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="jurisdiction">Jurisdiction</Label>
-                  <Select defaultValue="india">
-                    <SelectTrigger id="jurisdiction">
-                      <SelectValue placeholder="Select jurisdiction" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="india">India</SelectItem>
-                      <SelectItem value="other" disabled>
-                        Other (coming soon)
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label>Legal Taxonomy</Label>
-                  {filterOptions.map(({ id, label }) => (
-                    <div key={id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={id}
-                        checked={filters[id]}
-                        onCheckedChange={(checked) =>
-                          handleFilterChange(id, !!checked)
-                        }
+        <div className="md:col-span-3">
+          <form onSubmit={handleSearch}>
+            <div className="relative">
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                placeholder="e.g., 'What was the judgment in the 26/11 terror attacks case?'"
+                className="w-full pl-10 text-base"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                disabled={isLoading}
+              />
+              <Button
+                type="submit"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-9"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Ask
+              </Button>
+            </div>
+          </form>
+          
+          <div className="mt-6">
+            {isLoading && (
+              <Card className="flex min-h-[400px] flex-col items-center justify-center">
+                <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+                <p className="mt-4 text-muted-foreground">
+                  Researching...
+                </p>
+              </Card>
+            )}
+            {!isLoading && result && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>{result.title}</CardTitle>
+                  <CardDescription>
+                    AI-generated analysis and summary based on your query.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                   <Accordion type="multiple" defaultValue={['summary', 'answer']} className="w-full">
+                      <AccordionItem value="summary">
+                        <AccordionTrigger className="text-lg font-headline">Case Summary</AccordionTrigger>
+                        <AccordionContent className="prose prose-sm dark:prose-invert max-w-none pt-2">
+                          <pre className="whitespace-pre-wrap font-sans text-sm">{result.summary}</pre>
+                        </AccordionContent>
+                      </AccordionItem>
+                      <AccordionItem value="answer">
+                        <AccordionTrigger className="text-lg font-headline">Answer to your Question</AccordionTrigger>
+                        <AccordionContent className="prose prose-sm dark:prose-invert max-w-none pt-2">
+                           <pre className="whitespace-pre-wrap font-sans text-sm">{result.answer}</pre>
+                           {result.url && (
+                             <Button variant="outline" size="sm" asChild className="mt-4">
+                                <Link
+                                  href={result.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  View Source
+                                  <ExternalLink className="ml-2 h-3 w-3" />
+                                </Link>
+                              </Button>
+                           )}
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  <Separator />
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Ask a follow-up question</h3>
+                     <ScrollArea className="h-48 pr-4 mb-4 border rounded-md p-4">
+                      <div className="space-y-4">
+                        <div className='flex items-start gap-3'>
+                           <Bot className="h-5 w-5 flex-shrink-0" />
+                           <div className='bg-muted rounded-lg p-3 text-sm'>
+                            <p>I have summarized the document and answered your question. Ask me anything else about it.</p>
+                           </div>
+                         </div>
+                        {chatHistory.map((msg, index) => (
+                          <div
+                            key={index}
+                            className={cn(
+                              'flex items-start gap-3',
+                              msg.role === 'user' ? 'justify-end' : ''
+                            )}
+                          >
+                            {msg.role === 'assistant' && <Bot className="h-5 w-5 flex-shrink-0" />}
+                            <div
+                              className={cn(
+                                'max-w-md rounded-lg p-3 text-sm',
+                                msg.role === 'user'
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-muted'
+                              )}
+                            >
+                              {msg.content}
+                            </div>
+                          </div>
+                        ))}
+                        {isChatting && (
+                           <div className='flex items-start gap-3'>
+                             <Bot className="h-5 w-5 flex-shrink-0" />
+                             <div className='bg-muted rounded-lg p-3'>
+                               <Loader2 className='h-5 w-5 animate-spin' />
+                             </div>
+                           </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                    <form onSubmit={handleChatSubmit} className="flex w-full gap-2">
+                      <Input
+                        placeholder="Ask anything about this case..."
+                        value={chatQuery}
+                        onChange={(e) => setChatQuery(e.target.value)}
+                        disabled={isChatting || !result}
                       />
-                      <Label htmlFor={id} className="font-normal">
-                        {label}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                      <Button type="submit" size="icon" disabled={isChatting || !result || !chatQuery.trim()}>
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </form>
+                  </div>
 
-          <div className="md:col-span-3">
-            <form onSubmit={handleSearch}>
-              <div className="relative">
-                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  placeholder="Search with natural language... e.g., 'precedents for anticipatory bail in fraud cases'"
-                  className="w-full pl-10 text-base"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  disabled={isLoading}
-                />
-                <Button
-                  type="submit"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-9"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : null}
-                  Search
-                </Button>
+                </CardContent>
+              </Card>
+            )}
+            {!isLoading && !result && (
+              <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-16 text-center">
+                <Bot className="h-12 w-12 text-muted-foreground" />
+                <p className="mt-4 text-muted-foreground">
+                  Ask a question to get started. Your detailed answer will appear here.
+                </p>
               </div>
-            </form>
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>Search Results</CardTitle>
-                <CardDescription>
-                  Relevant cases and statutes will appear here.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoading && (
-                  <div className="flex min-h-[400px] flex-col items-center justify-center">
-                    <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
-                    <p className="mt-4 text-muted-foreground">
-                      Searching...
-                    </p>
-                  </div>
-                )}
-                {!isLoading && results && results.length > 0 && (
-                  <div className="space-y-4">
-                    {results.map((result) => (
-                      <Alert key={result.docid}>
-                        <div className="flex flex-col gap-4">
-                          <div>
-                            <AlertTitle className="font-bold">
-                              <Link
-                                href={result.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="hover:underline"
-                              >
-                                {result.title}
-                              </Link>
-                            </AlertTitle>
-                            <AlertDescription className="mt-2 line-clamp-3">
-                              {result.snippet}
-                            </AlertDescription>
-                          </div>
-                          <div className="flex items-center gap-2">
-                             <Button variant="outline" size="sm" asChild>
-                              <Link
-                                href={result.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                View on Indian Kanoon
-                                <ExternalLink className="ml-2 h-3 w-3" />
-                              </Link>
-                            </Button>
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => handleOpenSummaryDialog(result)}
-                            >
-                              <FileText className="mr-2 h-3 w-3" />
-                              Summarize
-                            </Button>
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => handleOpenChatDialog(result)}
-                            >
-                              <MessageSquare className="mr-2 h-3 w-3" />
-                              Chat
-                            </Button>
-                          </div>
-                        </div>
-                      </Alert>
-                    ))}
-                  </div>
-                )}
-                {!isLoading && results && results.length === 0 && (
-                  <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-16 text-center">
-                    <Bot className="h-12 w-12 text-muted-foreground" />
-                    <p className="mt-4 text-muted-foreground">
-                      No results found for your query. Try different keywords or
-                      filters.
-                    </p>
-                  </div>
-                )}
-                {!isLoading && !results && (
-                  <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-16 text-center">
-                    <Bot className="h-12 w-12 text-muted-foreground" />
-                    <p className="mt-4 text-muted-foreground">
-                      Start a search to see relevant legal information.
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            )}
           </div>
         </div>
       </div>
-      
-      {/* Summary Dialog */}
-      <Dialog open={!!summarizingDoc} onOpenChange={(isOpen) => !isOpen && closeSummaryDialog()}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>{summarizingDoc?.title}</DialogTitle>
-            <DialogDescription>
-              AI-generated summary of this document.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                {isSummarizing ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-3/4" />
-                  </div>
-                ) : (
-                  <pre className="whitespace-pre-wrap font-sans">{summary}</pre>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeSummaryDialog}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Chat Dialog */}
-      <Dialog open={!!chattingDoc} onOpenChange={(isOpen) => !isOpen && closeChatDialog()}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>{chattingDoc?.title}</DialogTitle>
-            <DialogDescription>
-              Chat about this document.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Chat</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-48 pr-4">
-                  <div className="space-y-4">
-                    {isSummarizing ? (
-                      <div className='flex items-center gap-3'>
-                         <Bot className="h-5 w-5 flex-shrink-0" />
-                         <div className='bg-muted rounded-lg p-3'>
-                           <p className="text-sm text-muted-foreground">Generating summary to begin...</p>
-                         </div>
-                       </div>
-                    ) : (
-                      <div className='flex items-start gap-3'>
-                         <Bot className="h-5 w-5 flex-shrink-0" />
-                         <div className='bg-muted rounded-lg p-3 text-sm'>
-                          <p>I have summarized the document. Ask me anything about it.</p>
-                         </div>
-                       </div>
-                    )}
-                    {chatHistory.map((msg, index) => (
-                      <div
-                        key={index}
-                        className={cn(
-                          'flex items-start gap-3',
-                          msg.role === 'user' ? 'justify-end' : ''
-                        )}
-                      >
-                        {msg.role === 'assistant' && <Bot className="h-5 w-5 flex-shrink-0" />}
-                        <div
-                          className={cn(
-                            'max-w-md rounded-lg p-3 text-sm',
-                            msg.role === 'user'
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted'
-                          )}
-                        >
-                          {msg.content}
-                        </div>
-                      </div>
-                    ))}
-                    {isChatting && (
-                       <div className='flex items-start gap-3'>
-                         <Bot className="h-5 w-5 flex-shrink-0" />
-                         <div className='bg-muted rounded-lg p-3'>
-                           <Loader2 className='h-5 w-5 animate-spin' />
-                         </div>
-                       </div>
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-              <CardFooter>
-                <form onSubmit={handleChatSubmit} className="flex w-full gap-2">
-                  <Input
-                    placeholder="Ask a follow-up question..."
-                    value={chatQuery}
-                    onChange={(e) => setChatQuery(e.target.value)}
-                    disabled={isSummarizing || isChatting || !summary}
-                  />
-                  <Button type="submit" size="icon" disabled={isSummarizing || isChatting || !summary || !chatQuery.trim()}>
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </form>
-              </CardFooter>
-            </Card>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeChatDialog}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+    </div>
   );
 }
+
