@@ -1,3 +1,4 @@
+
 'use client'
 
 import * as React from 'react'
@@ -26,10 +27,6 @@ export function MainNav() {
     {
       href: '/argument-generation',
       label: 'Argument Generation',
-    },
-    {
-      href: '/documents',
-      label: 'Documents',
     },
     {
       href: '/search',
