@@ -7,9 +7,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 import { useAuth, useUser } from '@/firebase';
-import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -58,18 +58,18 @@ export default function LoginPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      initiateEmailSignIn(auth, values.email, values.password);
+      await signInWithEmailAndPassword(auth, values.email, values.password);
       // The onAuthStateChanged listener in the provider will handle the redirect
       toast({
-        title: 'Login initiated',
-        description: 'Please wait while we log you in.',
+        title: 'Login Successful',
+        description: "You're now logged in.",
       });
     } catch (error: any) {
       console.error('Login Error:', error);
       toast({
         variant: 'destructive',
         title: 'Login Failed',
-        description: error.message || 'An unexpected error occurred.',
+        description: 'Invalid email or password. Please try again.',
       });
       setIsSubmitting(false);
     }

@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { updateProfile, updateEmail, signOut, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth"
+import { updateProfile, updateEmail, signOut } from "firebase/auth"
 
 import { useAuth, useUser } from '@/firebase'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -22,6 +22,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useToast } from '@/hooks/use-toast'
 import React from "react"
 import { Loader2 } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 const profileFormSchema = z.object({
   name: z.string().min(2, {
@@ -39,6 +40,7 @@ export default function SettingsPage() {
   const auth = useAuth()
   const { user } = useUser()
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const router = useRouter();
 
 
   const form = useForm<ProfileFormValues>({
@@ -97,7 +99,7 @@ export default function SettingsPage() {
   const handleLogout = async () => {
     try {
       await signOut(auth)
-      // Redirect is handled by the AppLayout
+      router.push('/login');
     } catch (error: any) {
       toast({
         variant: 'destructive',

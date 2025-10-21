@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { signOut } from 'firebase/auth'
 import { useAuth, useUser } from '@/firebase';
+import { useRouter } from 'next/navigation';
 
 import { PlaceHolderImages } from '@/lib/placeholder-images'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -16,15 +17,26 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useToast } from '@/hooks/use-toast';
 
 export function UserNav() {
   const auth = useAuth();
   const { user } = useUser();
+  const router = useRouter();
+  const { toast } = useToast();
   const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar')
   
   const handleLogout = async () => {
-    await signOut(auth);
-    // The AppLayout will handle the redirect
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (error: any) {
+       toast({
+        variant: 'destructive',
+        title: 'Logout Failed',
+        description: error.message || 'An unexpected error occurred.',
+      })
+    }
   };
 
   const getInitials = (name?: string | null) => {
@@ -41,7 +53,7 @@ export function UserNav() {
           <Avatar className="h-9 w-9">
             {userAvatar && (
               <AvatarImage
-                src={userAvatar.imageUrl}
+                src={user?.photoURL || userAvatar.imageUrl}
                 alt="User Avatar"
                 data-ai-hint={userAvatar.imageHint}
               />

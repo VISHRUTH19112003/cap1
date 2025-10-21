@@ -6,12 +6,11 @@ import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { updateProfile } from 'firebase/auth';
+import { updateProfile, createUserWithEmailAndPassword } from 'firebase/auth';
 import { Loader2 } from 'lucide-react';
 
 
 import { useAuth, useUser } from '@/firebase';
-import { initiateEmailSignUp } from '@/firebase/non-blocking-login';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -64,26 +63,21 @@ export default function SignupPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      initiateEmailSignUp(auth, values.email, values.password);
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      await updateProfile(userCredential.user, { displayName: values.name });
       
-      const unsubscribe = auth.onAuthStateChanged(async (user) => {
-        if (user) {
-          unsubscribe(); // Unsubscribe to prevent multiple calls
-          await updateProfile(user, { displayName: values.name });
-          toast({
-            title: 'Account Created',
-            description: 'You have been successfully signed up.',
-          });
-          // Redirect is handled by the effect hook
-        }
+      toast({
+        title: 'Account Created',
+        description: 'You have been successfully signed up.',
       });
+      // Redirect is handled by the effect hook
       
     } catch (error: any) {
       console.error('Signup Error:', error);
       toast({
         variant: 'destructive',
         title: 'Sign-up Failed',
-        description: error.message || 'An unexpected error occurred.',
+        description: error.code === 'auth/email-already-in-use' ? 'This email is already in use.' : 'An unexpected error occurred.',
       });
       setIsSubmitting(false);
     }
