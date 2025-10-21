@@ -52,39 +52,7 @@ type Document = {
   content: string
 }
 
-const initialDocuments: Document[] = [
-  {
-    name: 'Real Estate Lease Agreement.docx',
-    status: 'Analyzed',
-    date: '2023-06-23',
-    content: `REAL ESTATE LEASE AGREEMENT
-This Lease Agreement (the "Agreement") is made and entered into this 23rd day of June, 2023, by and between...`,
-  },
-  {
-    name: 'Employment Contract - Senior Developer.pdf',
-    status: 'Pending',
-    date: '2023-06-24',
-    content: `EMPLOYMENT CONTRACT
-This Employment Contract is entered into by and between [Company Name] and [Employee Name]...`,
-  },
-  {
-    name: 'Case Brief - Sharma v. Union.txt',
-    status: 'Analyzed',
-    date: '2023-06-25',
-    content: `CASE BRIEF: Sharma v. Union of India
-Citation: (2023) 5 SCC 123
-Court: Supreme Court of India
-Date: June 25, 2023
-Facts: ...`,
-  },
-  {
-    name: 'NDA for Project Alpha.docx',
-    status: 'Pending',
-    date: '2023-06-26',
-    content: `NON-DISCLOSURE AGREEMENT
-This Non-Disclosure Agreement ("Agreement") is effective as of June 26, 2023, between [Party A] and [Party B]...`,
-  },
-]
+const initialDocuments: Document[] = []
 
 export default function DocumentsPage() {
   const [documents, setDocuments] = React.useState<Document[]>(initialDocuments)
@@ -245,58 +213,66 @@ export default function DocumentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {documents.map((doc) => (
-                  <TableRow key={doc.name}>
-                    <TableCell className="font-medium">{doc.name}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          doc.status === 'Analyzed' ? 'default' : 'secondary'
-                        }
-                        className={
-                          doc.status === 'Analyzed'
-                            ? 'bg-green-600/20 text-green-700 dark:bg-green-700/30 dark:text-green-400'
-                            : ''
-                        }
-                      >
-                        {doc.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {doc.date}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            aria-haspopup="true"
-                            size="icon"
-                            variant="ghost"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handlePreview(doc)}>
-                            Preview
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAnalyze(doc)}>Analyze</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive focus:text-destructive">
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                {documents.length > 0 ? (
+                  documents.map((doc) => (
+                    <TableRow key={doc.name}>
+                      <TableCell className="font-medium">{doc.name}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            doc.status === 'Analyzed' ? 'default' : 'secondary'
+                          }
+                          className={
+                            doc.status === 'Analyzed'
+                              ? 'bg-green-600/20 text-green-700 dark:bg-green-700/30 dark:text-green-400'
+                              : ''
+                          }
+                        >
+                          {doc.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {doc.date}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              aria-haspopup="true"
+                              size="icon"
+                              variant="ghost"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Toggle menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handlePreview(doc)}>
+                              Preview
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleAnalyze(doc)}>Analyze</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive focus:text-destructive">
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                      No documents found.
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </CardContent>
           <CardFooter>
             <div className="text-xs text-muted-foreground">
-              Showing <strong>1-{documents.length}</strong> of{' '}
+              Showing <strong>{documents.length}</strong> of{' '}
               <strong>{documents.length}</strong> documents
             </div>
           </CardFooter>
