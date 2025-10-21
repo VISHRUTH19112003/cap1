@@ -131,22 +131,22 @@ export default function DocumentsPage() {
     if (!analysisResult || !analyzingDoc) return
 
     const reportContent = `
-# NyayaGPT Analysis Report for ${analyzingDoc.name}
+NyayaGPT Analysis Report for ${analyzingDoc.name}
 
-## 1. Key Clause Summary
+[Key Clause Summary]
 ${analysisResult.summary}
 
 ---
 
-## 2. Risk & Revision Report
+[Risk & Revision Report]
 ${analysisResult.riskReport}
     `
 
-    const blob = new Blob([reportContent.trim()], { type: 'text/markdown;charset=utf-8' })
+    const blob = new Blob([reportContent.trim()], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `${analyzingDoc.name.split('.')[0]}-analysis-report.md`
+    link.download = `${analyzingDoc.name.split('.')[0]}-analysis-report.txt`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

@@ -54,22 +54,22 @@ export function AnalysisForm() {
     if (!analysisResult) return
 
     const reportContent = `
-# NyayaGPT Analysis Report
+NyayaGPT Analysis Report
 
-## 1. Key Clause Summary
+[Key Clause Summary]
 ${analysisResult.summary}
 
 ---
 
-## 2. Risk & Revision Report
+[Risk & Revision Report]
 ${analysisResult.riskReport}
     `
 
-    const blob = new Blob([reportContent.trim()], { type: 'text/markdown;charset=utf-8' })
+    const blob = new Blob([reportContent.trim()], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = 'analysis-report.md'
+    link.download = 'analysis-report.txt'
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
