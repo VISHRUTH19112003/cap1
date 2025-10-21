@@ -34,6 +34,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
+        <footer className="border-t py-4 text-center text-sm text-muted-foreground">
+          © {new Date().getFullYear()} NyayaGPT. All Rights Reserved.
+        </footer>
       </div>
     </TooltipProvider>
   )
