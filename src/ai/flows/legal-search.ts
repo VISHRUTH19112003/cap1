@@ -42,16 +42,14 @@ const indianKanoonSearchTool = ai.defineTool(
     name: 'indianKanoonSearch',
     description:
       'Searches for relevant Indian legal documents, cases, and statutes based on a user query and filters. The tool should act as a legal researcher and return up-to-date, relevant documents from sources like Indian Kanoon.',
-    inputSchema: LegalSearchInputSchema,
+    inputSchema: z.object({
+        results: LegalSearchOutputSchema
+    }),
     outputSchema: LegalSearchOutputSchema,
   },
   async (input) => {
-    // This is a powerful tool that leverages the model's knowledge.
-    // The prompt for the tool is implicitly generated from the description and schemas.
-    // The model will understand that it needs to find and return legal documents.
-    // For a production app, you would add a real search implementation here.
-    // For this prototype, we are relying on the model's ability to generate valid, representative search results.
-    return []; // The model will generate the results, so we return an empty array.
+    // This is a mock tool. The model will generate the results, and we just return them.
+    return input.results || [];
   }
 );
 
@@ -72,7 +70,7 @@ const legalSearchFlow = ai.defineFlow(
   },
   async (input) => {
     const llmResponse = await ai.generate({
-      prompt: `You are an expert legal researcher. Your task is to find relevant Indian legal documents based on the user's query and filters. Provide the results in the format expected by the indianKanoonSearchTool.
+      prompt: `You are an expert legal researcher. Your task is to find relevant Indian legal documents based on the user's query and filters. Then, call the 'indianKanoonSearch' tool with your findings.
 
 Query: "${input.query}"
 Filters: ${JSON.stringify(input.filters)}`,
@@ -84,15 +82,13 @@ Filters: ${JSON.stringify(input.filters)}`,
     if (!toolRequest) {
       return [];
     }
-    
-    // Because the tool is a mock, the model actually returns the results
-    // in the `toolRequest.input` field.
+
+    // Since the tool is a mock, the model provides the results in the input.
+    // We just need to extract them.
     if (toolRequest.name === 'indianKanoonSearch' && toolRequest.input) {
        return (toolRequest.input as any).results as LegalSearchOutput;
     }
-
-    const toolResponse = await toolRequest.run();
     
-    return toolResponse ? (toolResponse as LegalSearchOutput) : [];
+    return [];
   }
 );
