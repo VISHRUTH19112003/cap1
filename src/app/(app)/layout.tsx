@@ -20,7 +20,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <TooltipProvider>
       <div className="relative flex min-h-screen flex-col">
-        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm">
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-card/60 px-4 backdrop-blur-lg">
           <div className="flex items-center gap-6">
             <Link href="/dashboard" className="flex items-center gap-2">
               <Icons.logo className="h-6 w-6" />
