@@ -129,7 +129,7 @@ export default function LegalSearchPage() {
           AI-Powered Legal Research Assistant
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Ask a question about Indian law, and get a summarized answer with case details.
+          Ask a question about Indian law, and get a summarized answer with case details. Special thanks to Indian Kanoon for providing the case details.
         </p>
       </div>
       
