@@ -1,10 +1,11 @@
-
 'use client'
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
+import { updateProfile, updateEmail, signOut, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth"
 
+import { useAuth, useUser } from '@/firebase'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,6 +20,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { useToast } from '@/hooks/use-toast'
+import React from "react"
+import { Loader2 } from "lucide-react"
 
 const profileFormSchema = z.object({
   name: z.string().min(2, {
@@ -31,26 +34,77 @@ const profileFormSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>
 
-// This can be fetched from a user management system
-const defaultValues: Partial<ProfileFormValues> = {
-  name: "Jane Doe",
-  email: "jane.doe@example.com",
-}
-
 export default function SettingsPage() {
   const { toast } = useToast()
+  const auth = useAuth()
+  const { user } = useUser()
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
-    defaultValues,
+    defaultValues: {
+      name: user?.displayName || "",
+      email: user?.email || "",
+    },
     mode: "onChange",
   })
+  
+  React.useEffect(() => {
+    if (user) {
+      form.reset({
+        name: user.displayName || "",
+        email: user.email || "",
+      });
+    }
+  }, [user, form]);
 
-  function onSubmit(data: ProfileFormValues) {
-    toast({
-      title: "Profile Updated",
-      description: "Your profile information has been successfully updated.",
-    })
+  async function onSubmit(data: ProfileFormValues) {
+    if (!user) {
+      toast({ variant: "destructive", title: "Not authenticated" });
+      return;
+    }
+    
+    setIsSubmitting(true);
+
+    try {
+      if (data.name !== user.displayName) {
+        await updateProfile(user, { displayName: data.name });
+      }
+
+      if (data.email !== user.email) {
+        // Re-authentication might be required for security-sensitive operations
+        // This is a simplified example. For a real app, you would prompt the user for their password.
+        await updateEmail(user, data.email);
+      }
+
+      toast({
+        title: "Profile Updated",
+        description: "Your profile information has been successfully updated.",
+      })
+    } catch (error: any) {
+      console.error("Profile update error:", error);
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: error.message || "An unexpected error occurred.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth)
+      // Redirect is handled by the AppLayout
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Logout Failed',
+        description: error.message || 'An unexpected error occurred.',
+      })
+    }
   }
 
   return (
@@ -101,7 +155,10 @@ export default function SettingsPage() {
                 />
               </CardContent>
               <CardFooter className="border-t pt-6">
-                <Button type="submit">Save Changes</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                   {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Changes
+                </Button>
               </CardFooter>
             </form>
           </Form>
@@ -134,7 +191,7 @@ export default function SettingsPage() {
                     <CardDescription>Log out of your account.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Button variant="outline">Log Out</Button>
+                    <Button variant="outline" onClick={handleLogout}>Log Out</Button>
                 </CardContent>
             </Card>
         </div>
