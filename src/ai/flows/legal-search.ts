@@ -29,6 +29,7 @@ const SearchResultSchema = z.object({
   title: z.string().describe('The title of the legal document or case.'),
   snippet: z
     .string()
+
     .describe('A brief summary or relevant snippet from the document.'),
   url: z.string().url().describe('The URL to the full document.'),
 });
@@ -76,21 +77,21 @@ const legalSearchFlow = ai.defineFlow(
 Query: "${input.query}"
 Filters: ${JSON.stringify(input.filters)}`,
       tools: [indianKanoonSearchTool],
-      toolChoice: 'tool',
+      toolChoice: 'required',
     });
 
     const toolRequest = llmResponse.toolRequest();
     if (!toolRequest) {
       return [];
     }
-
-    const toolResponse = await toolRequest.run();
-
+    
     // Because the tool is a mock, the model actually returns the results
     // in the `toolRequest.input` field.
-    if (toolRequest.name === 'indianKanoonSearch') {
-       return (toolRequest.input as any) as LegalSearchOutput;
+    if (toolRequest.name === 'indianKanoonSearch' && toolRequest.input) {
+       return (toolRequest.input as any).results as LegalSearchOutput;
     }
+
+    const toolResponse = await toolRequest.run();
     
     return toolResponse ? (toolResponse as LegalSearchOutput) : [];
   }
