@@ -1,5 +1,6 @@
+
 import Link from 'next/link'
-import { ArrowRight, FileText, Gavel, Search, Folder } from 'lucide-react'
+import { ArrowRight, FileText, Gavel, Info, Search, Folder } from 'lucide-react'
 
 import {
   Card,
@@ -46,7 +47,21 @@ export default function DashboardPage() {
           Your AI-powered legal assistant for Indian Law.
         </p>
       </div>
+
+      <Card className="bg-muted/30">
+        <CardHeader className="flex flex-row items-start gap-4">
+          <Info className="h-6 w-6 text-accent flex-shrink-0 mt-1" />
+          <div>
+            <CardTitle className="text-lg">Did you know?</CardTitle>
+            <CardDescription className="text-base text-foreground/80 mt-1">
+              The Indian judiciary has a unique feature called Public Interest Litigation (PIL), where any citizen can bring a matter of public importance to the court, making justice more accessible to all.
+            </CardDescription>
+          </div>
+        </CardHeader>
+      </Card>
+      
       <Separator />
+      
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {features.map((feature) => (
           <Link href={feature.href} key={feature.href} className="group">
