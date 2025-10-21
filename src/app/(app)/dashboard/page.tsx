@@ -41,9 +41,9 @@ const features = [
 export default function DashboardPage() {
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Welcome to NyayaGPT</h1>
-        <p className="mt-2 text-muted-foreground">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold tracking-tight lg:text-5xl">Welcome to NyayaGPT</h1>
+        <p className="mt-4 text-lg text-muted-foreground">
           Your AI-powered legal assistant for Indian Law.
         </p>
       </div>
