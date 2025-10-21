@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview A Genkit flow for performing legal research using a simulated Indian Kanoon search tool.
+ * @fileOverview A Genkit flow for performing legal research by generating simulated search results.
  *
  * - legalSearch - A function that takes a query and filters and returns a list of legal documents.
  * - LegalSearchInput - The input type for the legalSearch function.
@@ -18,7 +18,7 @@ const FilterSchema = z.object({
   const: z.boolean().optional(),
 });
 
-const LegalSearchInputSchema = z.object({
+export const LegalSearchInputSchema = z.object({
   query: z.string().describe("The user's natural language search query."),
   filters: FilterSchema.describe('Filters to apply to the search.'),
 });
@@ -29,35 +29,29 @@ const SearchResultSchema = z.object({
   title: z.string().describe('The title of the legal document or case.'),
   snippet: z
     .string()
-
     .describe('A brief summary or relevant snippet from the document.'),
   url: z.string().url().describe('The URL to the full document.'),
 });
 
-const LegalSearchOutputSchema = z.array(SearchResultSchema);
+export const LegalSearchOutputSchema = z.array(SearchResultSchema);
 export type LegalSearchOutput = z.infer<typeof LegalSearchOutputSchema>;
 
-const indianKanoonSearchTool = ai.defineTool(
-  {
-    name: 'indianKanoonSearch',
-    description:
-      'Searches for relevant Indian legal documents, cases, and statutes based on a user query and filters. The tool should act as a legal researcher and return up-to-date, relevant documents from sources like Indian Kanoon.',
-    inputSchema: z.object({
-        results: LegalSearchOutputSchema
-    }),
-    outputSchema: LegalSearchOutputSchema,
-  },
-  async (input) => {
-    // This is a mock tool. The model will generate the results, and we just return them.
-    return input.results || [];
-  }
-);
 
 export async function legalSearch(
   input: LegalSearchInput
 ): Promise<LegalSearchOutput> {
   return await legalSearchFlow(input);
 }
+
+const prompt = ai.definePrompt({
+  name: 'legalSearchPrompt',
+  input: { schema: LegalSearchInputSchema },
+  output: { schema: LegalSearchOutputSchema },
+  prompt: `You are an expert legal researcher acting as a proxy for the Indian Kanoon search engine. Your task is to generate a list of relevant Indian legal documents based on the user's query and filters. Return up-to-date, relevant documents that look like they came from Indian Kanoon. Provide between 3 and 5 results.
+
+Query: {{{query}}}
+Filters: {{{json filters}}}`,
+});
 
 const legalSearchFlow = ai.defineFlow(
   {
@@ -69,26 +63,7 @@ const legalSearchFlow = ai.defineFlow(
     }
   },
   async (input) => {
-    const llmResponse = await ai.generate({
-      prompt: `You are an expert legal researcher. Your task is to find relevant Indian legal documents based on the user's query and filters. Then, call the 'indianKanoonSearch' tool with your findings.
-
-Query: "${input.query}"
-Filters: ${JSON.stringify(input.filters)}`,
-      tools: [indianKanoonSearchTool],
-      toolChoice: 'required',
-    });
-
-    const toolRequest = llmResponse.toolRequest();
-    if (!toolRequest) {
-      return [];
-    }
-
-    // Since the tool is a mock, the model provides the results in the input.
-    // We just need to extract them.
-    if (toolRequest.name === 'indianKanoonSearch' && toolRequest.input) {
-       return (toolRequest.input as any).results as LegalSearchOutput;
-    }
-    
-    return [];
+    const { output } = await prompt(input);
+    return output || [];
   }
 );
