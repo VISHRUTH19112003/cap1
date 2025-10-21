@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, FileText, Gavel, Search } from 'lucide-react'
+import { ArrowRight, FileText, Gavel, Search, Folder } from 'lucide-react'
 
 import {
   Card,
@@ -29,6 +29,12 @@ const features = [
     href: '/search',
     icon: <Search className="mb-4 h-8 w-8 text-accent" />,
   },
+  {
+    title: 'Document Management',
+    description: 'Upload, view, and manage your legal documents securely in one place.',
+    href: '/documents',
+    icon: <Folder className="mb-4 h-8 w-8 text-accent" />,
+  },
 ]
 
 export default function DashboardPage() {
@@ -41,7 +47,7 @@ export default function DashboardPage() {
         </p>
       </div>
       <Separator />
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {features.map((feature) => (
           <Link href={feature.href} key={feature.href} className="group">
             <Card className="flex h-full flex-col transition-all group-hover:shadow-lg group-hover:-translate-y-1">
