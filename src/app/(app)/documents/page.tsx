@@ -1,7 +1,9 @@
+
 'use client'
 
 import * as React from 'react'
-import { MoreHorizontal, PlusCircle, Upload } from 'lucide-react'
+import { MoreHorizontal, PlusCircle, Upload, Loader2, Bot } from 'lucide-react'
+import { summarizeContractAndIdentifyRisks, type SummarizeContractAndIdentifyRisksOutput } from '@/ai/flows/summarize-contract-and-identify-risks'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -41,6 +43,7 @@ import {
 } from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 
 type Document = {
   name: string
@@ -87,9 +90,10 @@ export default function DocumentsPage() {
   const [documents, setDocuments] = React.useState<Document[]>(initialDocuments)
   const [isUploadDialogOpen, setIsUploadDialogOpen] = React.useState(false)
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
-  const [previewingDoc, setPreviewingDoc] = React.useState<Document | null>(
-    null
-  )
+  const [previewingDoc, setPreviewingDoc] = React.useState<Document | null>(null)
+  const [analyzingDoc, setAnalyzingDoc] = React.useState<Document | null>(null)
+  const [analysisResult, setAnalysisResult] = React.useState<SummarizeContractAndIdentifyRisksOutput | null>(null)
+  const [isAnalyzing, setIsAnalyzing] = React.useState(false)
   const { toast } = useToast()
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,6 +137,32 @@ export default function DocumentsPage() {
 
   const handlePreview = (doc: Document) => {
     setPreviewingDoc(doc)
+  }
+
+  const handleAnalyze = async (doc: Document) => {
+    setAnalyzingDoc(doc)
+    setIsAnalyzing(true)
+    setAnalysisResult(null)
+    try {
+      const result = await summarizeContractAndIdentifyRisks({ contract: doc.content })
+      setAnalysisResult(result)
+      setDocuments(docs => docs.map(d => d.name === doc.name ? { ...d, status: 'Analyzed' } : d))
+    } catch (error) {
+      console.error('Error analyzing document:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Analysis Failed',
+        description: 'An unexpected error occurred during analysis.',
+      })
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
+  const closeAnalysisDialog = () => {
+    setAnalyzingDoc(null)
+    setAnalysisResult(null)
+    setIsAnalyzing(false)
   }
 
   return (
@@ -252,7 +282,7 @@ export default function DocumentsPage() {
                           <DropdownMenuItem onClick={() => handlePreview(doc)}>
                             Preview
                           </DropdownMenuItem>
-                          <DropdownMenuItem>Analyze</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAnalyze(doc)}>Analyze</DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive focus:text-destructive">
                             Delete
                           </DropdownMenuItem>
@@ -290,8 +320,52 @@ export default function DocumentsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Dialog open={!!analyzingDoc} onOpenChange={(isOpen) => !isOpen && closeAnalysisDialog()}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Analysis Report: {analyzingDoc?.name}</DialogTitle>
+            <DialogDescription>
+              The AI-generated summary and risk report are below.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-[60vh] rounded-md border p-4">
+            {isAnalyzing && (
+              <div className="flex h-full items-center justify-center">
+                <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+                <p className="ml-4">Analyzing document...</p>
+              </div>
+            )}
+            {analysisResult && !isAnalyzing ? (
+              <Accordion type="multiple" defaultValue={['summary', 'risk-report']} className="w-full">
+                <AccordionItem value="summary">
+                  <AccordionTrigger className="text-lg font-headline">Key Clause Summary</AccordionTrigger>
+                  <AccordionContent className="prose prose-sm dark:prose-invert max-w-none pt-2">
+                    <pre className="whitespace-pre-wrap font-sans text-sm">{analysisResult.summary}</pre>
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="risk-report">
+                  <AccordionTrigger className="text-lg font-headline">Risk & Revision Report</AccordionTrigger>
+                  <AccordionContent className="prose prose-sm dark:prose-invert max-w-none pt-2">
+                    <pre className="whitespace-pre-wrap font-sans text-sm">{analysisResult.riskReport}</pre>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            ) : (
+              !isAnalyzing && (
+                <div className="flex h-full flex-col items-center justify-center text-center">
+                  <Bot className="h-12 w-12 text-muted-foreground" />
+                  <p className="mt-4 text-muted-foreground">
+                    Your report is pending analysis.
+                  </p>
+                </div>
+              )
+            )}
+          </ScrollArea>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeAnalysisDialog}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
-
-    
