@@ -6,7 +6,7 @@ import {
   type LegalSearchInput,
   type LegalSearchOutput,
 } from '@/ai/flows/legal-search';
-import { Bot, Loader2, Search as SearchIcon } from 'lucide-react';
+import { Bot, ExternalLink, Loader2, Search as SearchIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -193,17 +193,27 @@ export default function LegalSearchPage() {
                 <div className="space-y-4">
                   {results.map((result) => (
                     <Alert key={result.docid}>
-                      <AlertTitle className="font-bold">
-                        <Link
-                          href={result.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:underline"
-                        >
-                          {result.title}
-                        </Link>
-                      </AlertTitle>
-                      <AlertDescription>{result.snippet}</AlertDescription>
+                      <div className='flex justify-between items-start'>
+                        <div>
+                          <AlertTitle className="font-bold">
+                            <Link
+                              href={result.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:underline"
+                            >
+                              {result.title}
+                            </Link>
+                          </AlertTitle>
+                          <AlertDescription className="mt-2">{result.snippet}</AlertDescription>
+                        </div>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={result.url} target="_blank" rel="noopener noreferrer">
+                            View on Indian Kanoon
+                            <ExternalLink className="ml-2 h-3 w-3" />
+                          </Link>
+                        </Button>
+                      </div>
                     </Alert>
                   ))}
                 </div>
