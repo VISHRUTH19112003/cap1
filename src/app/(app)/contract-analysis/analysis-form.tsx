@@ -4,7 +4,7 @@
 import * as React from 'react'
 import { summarizeContractAndIdentifyRisks, type SummarizeContractAndIdentifyRisksOutput } from '@/ai/flows/summarize-contract-and-identify-risks'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Bot, Loader2, Download } from 'lucide-react'
+import { Bot, Loader2, Download, Upload } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -14,17 +14,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
-import { useUser, useFirestore, useStorage } from '@/firebase'
-import { collection, query, onSnapshot, doc, getDoc } from 'firebase/firestore'
-import { ref, getBytes } from "firebase/storage";
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Input } from '@/components/ui/input'
 
 
 const formSchema = z.object({
@@ -33,20 +23,11 @@ const formSchema = z.object({
   }),
 })
 
-interface Document {
-  id: string;
-  filename: string;
-  storagePath: string;
-}
-
 export function AnalysisForm() {
   const [analysisResult, setAnalysisResult] = React.useState<SummarizeContractAndIdentifyRisksOutput | null>(null)
   const [isLoading, setIsLoading] = React.useState(false)
   const { toast } = useToast()
-  const { user } = useUser()
-  const firestore = useFirestore()
-  const storage = useStorage()
-  const [documents, setDocuments] = React.useState<Document[]>([])
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -54,16 +35,6 @@ export function AnalysisForm() {
       contract: '',
     },
   })
-
-  React.useEffect(() => {
-    if (!user || !firestore) return;
-    const docsQuery = query(collection(firestore, `users/${user.uid}/documents`));
-    const unsubscribe = onSnapshot(docsQuery, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Document));
-      setDocuments(docs);
-    });
-    return () => unsubscribe();
-  }, [user, firestore]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
@@ -106,25 +77,31 @@ ${analysisResult.riskReport}
     URL.revokeObjectURL(url)
   }
   
-  const handleSelectDocument = async (docId: string) => {
-    if (!docId || !user || !firestore || !storage) return;
-    
-    const docRef = doc(firestore, `users/${user.uid}/documents`, docId);
-    const docSnap = await getDoc(docRef);
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-    if (docSnap.exists()) {
-      const fileRef = ref(storage, docSnap.data().storagePath);
-      try {
-        const bytes = await getBytes(fileRef);
-        const text = new TextDecoder().decode(bytes);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result;
+      if (typeof text === 'string') {
         form.setValue('contract', text);
-        toast({ title: 'Success', description: 'Document content loaded.' });
-      } catch (e: any) {
-         console.error("Error fetching document content:", e);
-         toast({ variant: 'destructive', title: 'Error', description: 'Could not load document content.' });
+        toast({
+          title: 'File Loaded',
+          description: `${file.name} content has been loaded into the text area.`,
+        });
       }
+    };
+    reader.onerror = () => {
+        toast({
+            variant: 'destructive',
+            title: 'File Read Error',
+            description: 'Could not read the selected file.',
+        });
     }
+    reader.readAsText(file);
   };
+
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
@@ -132,28 +109,13 @@ ${analysisResult.riskReport}
         <CardHeader>
           <CardTitle>Analyze a Contract</CardTitle>
           <CardDescription>
-            Paste contract text or select an uploaded document to begin the analysis.
+            Paste contract text or upload a document to begin the analysis.
           </CardDescription>
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <CardContent>
               <div className="space-y-4">
-                 <FormItem>
-                   <FormLabel>Select an existing document</FormLabel>
-                   <Select onValueChange={handleSelectDocument}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a document to load its content" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {documents.map(doc => (
-                          <SelectItem key={doc.id} value={doc.id}>{doc.filename}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                 </FormItem>
                 <FormField
                   control={form.control}
                   name="contract"
@@ -162,7 +124,7 @@ ${analysisResult.riskReport}
                       <FormLabel>Contract Text</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Paste your contract text here or select a document above."
+                          placeholder="Paste your contract text here or upload a document below."
                           className="min-h-[400px] resize-y"
                           {...field}
                         />
@@ -171,12 +133,17 @@ ${analysisResult.riskReport}
                     </FormItem>
                   )}
                 />
+                <Input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".txt,.doc,.docx,.pdf" />
               </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex justify-between">
               <Button type="submit" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Analyze Text
+              </Button>
+              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                 <Upload className="mr-2 h-4 w-4" />
+                 Upload Document
               </Button>
             </CardFooter>
           </form>

@@ -21,10 +21,6 @@ export function MainNav() {
       label: 'Dashboard',
     },
     {
-      href: '/documents',
-      label: 'Documents',
-    },
-    {
       href: '/contract-analysis',
       label: 'Contract Analysis',
     },

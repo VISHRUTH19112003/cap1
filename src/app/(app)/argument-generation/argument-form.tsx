@@ -4,7 +4,7 @@
 import * as React from 'react'
 import { generateLegalArgument } from '@/ai/flows/generate-legal-argument'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Bot, Loader2, Sparkles } from 'lucide-react'
+import { Bot, Loader2, Sparkles, Upload } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -14,17 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { useUser, useFirestore, useStorage } from '@/firebase'
-import { collection, query, onSnapshot, doc, getDoc } from 'firebase/firestore'
-import { ref, getBytes } from "firebase/storage";
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Input } from '@/components/ui/input'
 
 
 const formSchema = z.object({
@@ -33,20 +23,11 @@ const formSchema = z.object({
   }),
 })
 
-interface Document {
-  id: string;
-  filename: string;
-  storagePath: string;
-}
-
 export function ArgumentForm() {
   const [generatedArgument, setGeneratedArgument] = React.useState<string | null>(null)
   const [isLoading, setIsLoading] = React.useState(false)
   const { toast } = useToast()
-  const { user } = useUser()
-  const firestore = useFirestore()
-  const storage = useStorage()
-  const [documents, setDocuments] = React.useState<Document[]>([])
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -54,16 +35,6 @@ export function ArgumentForm() {
       prompt: '',
     },
   })
-  
-  React.useEffect(() => {
-    if (!user || !firestore) return;
-    const docsQuery = query(collection(firestore, `users/${user.uid}/documents`));
-    const unsubscribe = onSnapshot(docsQuery, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Document));
-      setDocuments(docs);
-    });
-    return () => unsubscribe();
-  }, [user, firestore]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
@@ -83,26 +54,32 @@ export function ArgumentForm() {
     }
   }
   
-  const handleSelectDocument = async (docId: string) => {
-    if (!docId || !user || !firestore || !storage) return;
-    
-    const docRef = doc(firestore, `users/${user.uid}/documents`, docId);
-    const docSnap = await getDoc(docRef);
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-    if (docSnap.exists()) {
-      const fileRef = ref(storage, docSnap.data().storagePath);
-      try {
-        const bytes = await getBytes(fileRef);
-        const text = new TextDecoder().decode(bytes);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result;
+      if (typeof text === 'string') {
         const currentPrompt = form.getValues('prompt');
         form.setValue('prompt', `${currentPrompt}\\n\\n--- Document Content ---\\n${text}`);
-        toast({ title: 'Success', description: 'Document content appended to prompt.' });
-      } catch (e: any) {
-        console.error("Error fetching document content:", e);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not load document content.' });
+        toast({
+          title: 'File Content Appended',
+          description: `${file.name} content has been appended to the prompt.`,
+        });
       }
+    };
+     reader.onerror = () => {
+        toast({
+            variant: 'destructive',
+            title: 'File Read Error',
+            description: 'Could not read the selected file.',
+        });
     }
+    reader.readAsText(file);
   };
+
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
@@ -110,28 +87,12 @@ export function ArgumentForm() {
           <CardHeader>
             <CardTitle>Generate Legal Argument</CardTitle>
             <CardDescription>
-              Describe a legal situation or select a document to provide context.
+              Describe a legal situation or upload a document to provide context.
             </CardDescription>
           </CardHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
               <CardContent className="space-y-4">
-                 <FormItem>
-                   <FormLabel>Select a document for context</FormLabel>
-                    <Select onValueChange={handleSelectDocument}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a document to append its content" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {documents.map(doc => (
-                          <SelectItem key={doc.id} value={doc.id}>{doc.filename}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                 </FormItem>
-              
                 <FormField
                   control={form.control}
                   name="prompt"
@@ -149,8 +110,9 @@ export function ArgumentForm() {
                     </FormItem>
                   )}
                 />
+                 <Input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".txt,.doc,.docx,.pdf" />
               </CardContent>
-              <CardFooter>
+              <CardFooter className="flex justify-between">
                 <Button type="submit" disabled={isLoading} variant="default" className='bg-primary text-primary-foreground'>
                   {isLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -158,6 +120,10 @@ export function ArgumentForm() {
                     <Sparkles className="mr-2 h-4 w-4" />
                   )}
                   Generate Argument
+                </Button>
+                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload for Context
                 </Button>
               </CardFooter>
             </form>

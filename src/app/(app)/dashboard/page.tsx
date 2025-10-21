@@ -1,6 +1,6 @@
 
 import Link from 'next/link'
-import { ArrowRight, FileText, Gavel, Search, Settings, Book } from 'lucide-react'
+import { ArrowRight, FileText, Gavel, Search, Settings } from 'lucide-react'
 
 import {
   Card,
@@ -30,11 +30,11 @@ const features = [
     href: '/search',
     icon: <Search className="mb-4 h-8 w-8 text-accent" />,
   },
-    {
-    title: 'Document Management',
-    description: 'Upload and manage your legal documents in one place.',
-    href: '/documents',
-    icon: <Book className="mb-4 h-8 w-8 text-accent" />,
+  {
+    title: 'Settings',
+    description: 'Manage your account and application preferences.',
+    href: '/settings',
+    icon: <Settings className="mb-4 h-8 w-8 text-accent" />,
   },
 ]
 
