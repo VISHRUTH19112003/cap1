@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -7,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 
 import { useAuth, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
@@ -50,7 +51,8 @@ export default function LoginPage() {
   });
 
   React.useEffect(() => {
-    if (!isUserLoading && user) {
+    // Redirect only if user is loaded and verified
+    if (!isUserLoading && user?.emailVerified) {
       router.push('/dashboard');
     }
   }, [user, isUserLoading, router]);
@@ -58,12 +60,24 @@ export default function LoginPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
-      // The onAuthStateChanged listener in the provider will handle the redirect
-      toast({
-        title: 'Login Successful',
-        description: "You're now logged in.",
-      });
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+
+      if (userCredential.user.emailVerified) {
+        toast({
+          title: 'Login Successful',
+          description: "You're now logged in.",
+        });
+        // The useEffect will handle the redirect
+      } else {
+        // If email is not verified, sign the user out and show a message
+        await signOut(auth);
+        toast({
+          variant: 'destructive',
+          title: 'Email Not Verified',
+          description: 'Please verify your email address before logging in. Check your inbox for the verification link.',
+        });
+        setIsSubmitting(false);
+      }
     } catch (error: any) {
       console.error('Login Error:', error);
       toast({
@@ -75,7 +89,7 @@ export default function LoginPage() {
     }
   }
   
-  if (isUserLoading || user) {
+  if (isUserLoading || (user && user.emailVerified)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin" />

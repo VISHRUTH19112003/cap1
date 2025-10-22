@@ -20,12 +20,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   React.useEffect(() => {
-    if (isClient && !isUserLoading && !user) {
+    if (isClient && !isUserLoading && (!user || !user.emailVerified)) {
       router.push('/login')
     }
   }, [isClient, isUserLoading, user, router])
 
-  if (!isClient || isUserLoading || !user) {
+  if (!isClient || isUserLoading || !user || !user.emailVerified) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin" />
