@@ -23,6 +23,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -36,7 +37,11 @@ const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
   password: z
     .string()
-    .min(6, { message: 'Password must be at least 6 characters.' }),
+    .min(8, { message: 'Password must be at least 8 characters.' })
+    .regex(/[a-z]/, { message: 'Password must include at least one lowercase letter.'})
+    .regex(/[A-Z]/, { message: 'Password must include at least one uppercase letter.'})
+    .regex(/[0-9]/, { message: 'Password must include at least one number.'})
+    .regex(/[!@#$%^&*]/, { message: 'Password must include at least one special character (e.g., @, #, $).' }),
 });
 
 export default function SignupPage() {
@@ -146,6 +151,9 @@ export default function SignupPage() {
                   <FormControl>
                     <Input type="password" {...field} />
                   </FormControl>
+                   <FormDescription>
+                    Must be 8+ characters with uppercase, lowercase, number, and special characters.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
