@@ -1,9 +1,13 @@
+
 'use client'
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { updateProfile, updateEmail, signOut } from "firebase/auth"
+import { updateProfile, updateEmail, signOut, deleteUser } from "firebase/auth"
+import * as React from "react"
+import { Loader2, Trash2 } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 import { useAuth, useUser } from '@/firebase'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -20,9 +24,17 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { useToast } from '@/hooks/use-toast'
-import React from "react"
-import { Loader2 } from "lucide-react"
-import { useRouter } from "next/navigation"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const profileFormSchema = z.object({
   name: z.string().min(2, {
@@ -40,6 +52,7 @@ export default function SettingsPage() {
   const auth = useAuth()
   const { user } = useUser()
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
   const router = useRouter();
 
 
@@ -75,8 +88,6 @@ export default function SettingsPage() {
       }
 
       if (data.email !== user.email) {
-        // Re-authentication might be required for security-sensitive operations
-        // This is a simplified example. For a real app, you would prompt the user for their password.
         await updateEmail(user, data.email);
       }
 
@@ -108,6 +119,36 @@ export default function SettingsPage() {
       })
     }
   }
+
+  const handleDeleteAccount = async () => {
+    if (!user) {
+      toast({ variant: "destructive", title: "Not authenticated" });
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      await deleteUser(user);
+      toast({
+        title: "Account Deleted",
+        description: "Your account has been permanently deleted.",
+      });
+      router.push("/signup");
+    } catch (error: any) {
+      console.error("Account deletion error:", error);
+      let description = "An unexpected error occurred.";
+      if (error.code === 'auth/requires-recent-login') {
+        description = "This is a sensitive operation. Please log out and log back in before deleting your account.";
+      }
+      toast({
+        variant: "destructive",
+        title: "Deletion Failed",
+        description: description,
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
 
   return (
     <div className="space-y-8">
@@ -195,6 +236,40 @@ export default function SettingsPage() {
                 <CardContent>
                     <Button variant="outline" onClick={handleLogout}>Log Out</Button>
                 </CardContent>
+            </Card>
+
+             <Card>
+              <CardHeader>
+                <CardTitle>Delete Account</CardTitle>
+                <CardDescription>
+                  Permanently delete your account and all associated data. This action is irreversible.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Account
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete your account and remove your data from our servers.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteAccount} disabled={isDeleting}>
+                        {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Continue
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </CardContent>
             </Card>
         </div>
       </div>
