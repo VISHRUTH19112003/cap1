@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -6,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { updateProfile, createUserWithEmailAndPassword } from 'firebase/auth';
+import { updateProfile, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { Loader2 } from 'lucide-react';
 
 
@@ -66,11 +67,14 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       await updateProfile(userCredential.user, { displayName: values.name });
       
+      await sendEmailVerification(userCredential.user);
+
       toast({
-        title: 'Account Created',
-        description: 'You have been successfully signed up.',
+        title: 'Verification Email Sent',
+        description: 'Please check your inbox to verify your email and complete registration.',
       });
-      // Redirect is handled by the effect hook
+      
+      router.push('/login');
       
     } catch (error: any) {
       console.error('Signup Error:', error);
