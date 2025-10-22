@@ -4,7 +4,7 @@
 import * as React from 'react'
 import { generateLegalArgument } from '@/ai/flows/generate-legal-argument'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Bot, Loader2, Sparkles, Upload } from 'lucide-react'
+import { Bot, Loader2, Sparkles, Upload, Download } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -79,6 +79,20 @@ export function ArgumentForm() {
     }
     reader.readAsText(file);
   };
+  
+  const handleDownload = () => {
+    if (!generatedArgument) return
+
+    const blob = new Blob([generatedArgument], { type: 'text/plain;charset=utf-t' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'generated-argument.txt'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
 
 
   return (
@@ -131,11 +145,19 @@ export function ArgumentForm() {
         </Card>
       
       <Card className="flex flex-col">
-        <CardHeader>
-          <CardTitle>Generated Argument</CardTitle>
-          <CardDescription>
-            The AI-generated legal argument will appear below.
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between">
+          <div>
+            <CardTitle>Generated Argument</CardTitle>
+            <CardDescription>
+              The AI-generated legal argument will appear below.
+            </CardDescription>
+          </div>
+           {generatedArgument && (
+            <Button variant="outline" size="icon" onClick={handleDownload}>
+              <Download className="h-4 w-4" />
+              <span className="sr-only">Download Argument</span>
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="flex-1">
           {isLoading && (
