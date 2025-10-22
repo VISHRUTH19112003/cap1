@@ -80,10 +80,15 @@ export default function LoginPage() {
       }
     } catch (error: any) {
       console.error('Login Error:', error);
+      let description = 'An unexpected error occurred. Please try again.';
+      if (error.code === 'auth/invalid-credential') {
+        description = 'Invalid email or password.';
+      }
+      
       toast({
         variant: 'destructive',
         title: 'Login Failed',
-        description: 'Invalid email or password.',
+        description: description,
       });
       setIsSubmitting(false);
     }
