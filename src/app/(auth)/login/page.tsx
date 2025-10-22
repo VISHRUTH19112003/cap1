@@ -58,6 +58,7 @@ export default function LoginPage() {
   }, [user, isUserLoading, router]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!auth) return;
     setIsSubmitting(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
