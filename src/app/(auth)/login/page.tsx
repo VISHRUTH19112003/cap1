@@ -68,7 +68,7 @@ export default function LoginPage() {
           title: 'Login Successful',
           description: "You're now logged in.",
         });
-        // The useEffect will handle the redirect, no need to set isSubmitting to false here.
+        router.push('/dashboard');
       } else {
         // If email is not verified, sign the user out and show a message
         await signOut(auth);
