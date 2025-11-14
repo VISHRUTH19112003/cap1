@@ -89,7 +89,7 @@ export default function LoginPage() {
     }
   }
   
-  if (isUserLoading || (user && user.emailVerified)) {
+  if (isUserLoading && !user) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin" />

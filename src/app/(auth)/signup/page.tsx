@@ -93,7 +93,7 @@ export default function SignupPage() {
     }
   }
   
-  if (isUserLoading || user) {
+  if (isUserLoading && !user) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin" />
