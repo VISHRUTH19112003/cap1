@@ -4,10 +4,9 @@
 import * as React from 'react'
 import { generateLegalArgument } from '@/ai/flows/generate-legal-argument'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Bot, Loader2, Sparkles, Upload, Download, File as FileIcon, X, Eye } from 'lucide-react'
+import { Bot, Loader2, Sparkles, Download } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import Link from 'next/link'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,19 +14,15 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Input } from '@/components/ui/input'
-
 
 const formSchema = z.object({
-  prompt: z.string().optional(),
+  prompt: z.string().min(10, { message: 'Please enter a prompt of at least 10 characters.' }),
 });
 
 export function ArgumentForm() {
   const [generatedArgument, setGeneratedArgument] = React.useState<string | null>(null)
   const [isLoading, setIsLoading] = React.useState(false)
-  const [uploadedFile, setUploadedFile] = React.useState<{name: string, dataUri: string} | null>(null);
   const { toast } = useToast()
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -37,20 +32,11 @@ export function ArgumentForm() {
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-     if (!values.prompt && !uploadedFile) {
-        toast({
-            variant: 'destructive',
-            title: 'Input Missing',
-            description: 'Please either enter a prompt or upload a document for context.',
-        });
-        return;
-    }
     setIsLoading(true)
     setGeneratedArgument(null)
     try {
       const result = await generateLegalArgument({
         prompt: values.prompt,
-        contextDataUri: uploadedFile?.dataUri,
       })
       setGeneratedArgument(result)
     } catch (error) {
@@ -64,45 +50,6 @@ export function ArgumentForm() {
       setIsLoading(false)
     }
   }
-  
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUri = e.target?.result as string;
-      setUploadedFile({ name: file.name, dataUri });
-      
-      if (file.type === 'text/plain') {
-        // To read file content as text
-        const textReader = new FileReader();
-        textReader.onload = (e) => {
-          const text = e.target?.result as string;
-          form.setValue('prompt', text);
-          toast({
-            title: 'File Content Loaded',
-            description: `Content from ${file.name} has been loaded into the prompt area.`,
-          });
-        }
-        textReader.readAsText(file);
-      } else {
-        // For other file types, we don't load content into the textarea
-        toast({
-          title: 'File Ready for Context',
-          description: `${file.name} is ready. Its content won't be displayed but will be used by the AI.`,
-        });
-      }
-    };
-     reader.onerror = () => {
-        toast({
-            variant: 'destructive',
-            title: 'File Read Error',
-            description: 'Could not read the selected file.',
-        });
-    }
-    reader.readAsDataURL(file);
-  };
   
   const handleDownload = () => {
     if (!generatedArgument) return
@@ -118,19 +65,13 @@ export function ArgumentForm() {
     URL.revokeObjectURL(url)
   }
 
-  const handleRemoveFile = () => {
-    setUploadedFile(null);
-    // Don't clear the prompt automatically
-    if(fileInputRef.current) fileInputRef.current.value = '';
-  }
-
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Generate Legal Argument</CardTitle>
             <CardDescription>
-              Describe a legal situation or upload a document to provide context.
+              Describe a legal situation to generate a structured argument.
             </CardDescription>
           </CardHeader>
           <Form {...form}>
@@ -144,7 +85,7 @@ export function ArgumentForm() {
                       <FormLabel>Legal Prompt</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="e.g., Argue for bail in a case of alleged theft where the evidence is purely circumstantial... Or upload a document below."
+                          placeholder="e.g., Argue for bail in a case of alleged theft where the evidence is purely circumstantial..."
                           className="min-h-[300px] resize-y"
                           {...field}
                         />
@@ -153,25 +94,8 @@ export function ArgumentForm() {
                     </FormItem>
                   )}
                 />
-                 {uploadedFile && (
-                  <div className="flex items-center gap-2 rounded-md border border-dashed p-3 text-sm">
-                    <FileIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <span className="flex-1 font-medium truncate" title={uploadedFile.name}>{uploadedFile.name}</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
-                      <Link href={uploadedFile.dataUri} target="_blank" rel="noopener noreferrer">
-                         <Eye />
-                         <span className="sr-only">View File</span>
-                      </Link>
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleRemoveFile}>
-                        <X/>
-                        <span className="sr-only">Remove file</span>
-                    </Button>
-                  </div>
-                )}
-                 <Input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".txt,.pdf,.doc,.docx" />
               </CardContent>
-              <CardFooter className="flex justify-between">
+              <CardFooter className="flex justify-start">
                 <Button type="submit" disabled={isLoading} variant="default" className='bg-primary text-primary-foreground'>
                   {isLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -179,10 +103,6 @@ export function ArgumentForm() {
                     <Sparkles className="mr-2 h-4 w-4" />
                   )}
                   Generate Argument
-                </Button>
-                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload for Context
                 </Button>
               </CardFooter>
             </form>

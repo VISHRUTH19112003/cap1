@@ -7,7 +7,7 @@ export default function ArgumentGenerationPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">AI-Driven Argument Generation</h1>
         <p className="mt-2 text-muted-foreground">
-          Craft structured legal arguments by providing a prompt and optionally selecting a document for context.
+          Craft structured legal arguments by providing a prompt with context.
         </p>
       </div>
       <ArgumentForm />

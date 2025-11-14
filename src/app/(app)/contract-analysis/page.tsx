@@ -1,3 +1,4 @@
+
 import { AnalysisForm } from './analysis-form'
 
 export default function ContractAnalysisPage() {
@@ -6,7 +7,7 @@ export default function ContractAnalysisPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Smart Contract Analysis</h1>
         <p className="mt-2 text-muted-foreground">
-          Identify key clauses, flag risks, and get suggested revisions for your legal contracts.
+          Paste your contract text to identify key clauses, flag risks, and get suggested revisions.
         </p>
       </div>
       <AnalysisForm />

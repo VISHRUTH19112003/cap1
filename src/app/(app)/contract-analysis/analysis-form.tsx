@@ -4,10 +4,9 @@
 import * as React from 'react'
 import { summarizeContractAndIdentifyRisks, type SummarizeContractAndIdentifyRisksOutput } from '@/ai/flows/summarize-contract-and-identify-risks'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Bot, Loader2, Download, Upload, File as FileIcon, X, Eye } from 'lucide-react'
+import { Bot, Loader2, Download } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import Link from 'next/link'
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
@@ -15,20 +14,16 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
-import { Input } from '@/components/ui/input'
-
 
 const formSchema = z.object({
-  contract: z.string().optional(),
+  contract: z.string().min(10, { message: 'Contract text must be at least 10 characters.' }),
 });
 
 export function AnalysisForm() {
   const [analysisResult, setAnalysisResult] = React.useState<SummarizeContractAndIdentifyRisksOutput | null>(null)
   const [isLoading, setIsLoading] = React.useState(false)
-  const [uploadedFile, setUploadedFile] = React.useState<{name: string, dataUri: string} | null>(null);
 
   const { toast } = useToast()
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -38,21 +33,11 @@ export function AnalysisForm() {
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!values.contract && !uploadedFile) {
-        toast({
-            variant: 'destructive',
-            title: 'Input Missing',
-            description: 'Please either paste the contract text or upload a document.',
-        });
-        return;
-    }
-
     setIsLoading(true)
     setAnalysisResult(null)
     try {
       const result = await summarizeContractAndIdentifyRisks({
         contractText: values.contract,
-        contractDataUri: uploadedFile?.dataUri
       })
       setAnalysisResult(result)
     } catch (error) {
@@ -89,48 +74,6 @@ ${analysisResult.riskReport}
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
   }
-  
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUri = e.target?.result as string;
-      setUploadedFile({ name: file.name, dataUri });
-      
-      if (file.type === 'text/plain') {
-        const textReader = new FileReader();
-        textReader.onload = (e) => {
-          const text = e.target?.result as string;
-          form.setValue('contract', text);
-          toast({
-            title: 'File Content Loaded',
-            description: `Content from ${file.name} has been loaded into the text area.`,
-          });
-        }
-        textReader.readAsText(file);
-      } else {
-        toast({
-          title: 'File Ready for Analysis',
-          description: `${file.name} is ready. Its content won't be displayed but will be used by the AI.`,
-        });
-      }
-    };
-    reader.onerror = () => {
-        toast({
-            variant: 'destructive',
-            title: 'File Read Error',
-            description: 'Could not read the selected file.',
-        });
-    }
-    reader.readAsDataURL(file);
-  };
-
-  const handleRemoveFile = () => {
-    setUploadedFile(null);
-    if(fileInputRef.current) fileInputRef.current.value = '';
-  }
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
@@ -138,7 +81,7 @@ ${analysisResult.riskReport}
         <CardHeader>
           <CardTitle>Analyze a Contract</CardTitle>
           <CardDescription>
-            Paste contract text or upload a document to begin the analysis.
+            Paste contract text to begin the analysis.
           </CardDescription>
         </CardHeader>
         <Form {...form}>
@@ -153,7 +96,7 @@ ${analysisResult.riskReport}
                       <FormLabel>Contract Text</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Paste your contract text here, or upload a document below."
+                          placeholder="Paste your contract text here."
                           className="min-h-[400px] resize-y"
                           {...field}
                         />
@@ -162,33 +105,12 @@ ${analysisResult.riskReport}
                     </FormItem>
                   )}
                 />
-                 {uploadedFile && (
-                  <div className="flex items-center gap-2 rounded-md border border-dashed p-3 text-sm">
-                    <FileIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <span className="flex-1 font-medium truncate" title={uploadedFile.name}>{uploadedFile.name}</span>
-                     <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
-                      <Link href={uploadedFile.dataUri} target="_blank" rel="noopener noreferrer">
-                         <Eye />
-                         <span className="sr-only">View File</span>
-                      </Link>
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleRemoveFile}>
-                        <X/>
-                        <span className="sr-only">Remove file</span>
-                    </Button>
-                  </div>
-                )}
-                <Input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".txt,.pdf,.doc,.docx" />
               </div>
             </CardContent>
-            <CardFooter className="flex justify-between">
+            <CardFooter className="flex justify-start">
               <Button type="submit" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Analyze
-              </Button>
-              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                 <Upload className="mr-2 h-4 w-4" />
-                 Upload Document
               </Button>
             </CardFooter>
           </form>
