@@ -109,7 +109,7 @@ export function DocumentManager() {
       toast({ title: 'Success', description: `${docToDelete.filename} has been deleted.` });
     } catch (error) {
       console.error("Delete error:", error);
-      toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not delete the document. It may have already been deleted.' });
+      toast({ variant: 'destructive', title: 'Delete Failed', 'description': 'Could not delete the document. It may have already been deleted.' });
     }
   }
 
@@ -119,7 +119,7 @@ export function DocumentManager() {
       <Card className="lg:col-span-1">
         <CardHeader>
           <CardTitle>Upload Document</CardTitle>
-          <CardDescription>Select a file to upload.</CardDescription>
+          <CardDescription>Select a PDF or TXT file to upload.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -131,7 +131,7 @@ export function DocumentManager() {
                   <FormItem>
                     <FormLabel>Document File</FormLabel>
                     <FormControl>
-                      <Input type="file" {...form.register('file')} accept=".txt,.pdf,.doc,.docx" />
+                      <Input type="file" {...form.register('file')} accept=".pdf,.txt" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

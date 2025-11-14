@@ -14,6 +14,7 @@ import {z} from 'genkit';
 
 const GenerateLegalArgumentInputSchema = z.object({
   prompt: z.string().describe('A prompt describing the legal situation for which an argument is to be generated.'),
+  contextDataUri: z.string().optional().describe("A document, as a data URI, that provides context for the legal argument. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
 });
 
 export type GenerateLegalArgumentInput = z.infer<typeof GenerateLegalArgumentInputSchema>;
@@ -33,6 +34,13 @@ const prompt = ai.definePrompt({
   input: {schema: GenerateLegalArgumentInputSchema},
   output: {schema: GenerateLegalArgumentOutputSchema},
   prompt: `You are an AI legal assistant specializing in Indian law. Generate a structured legal argument based on the following prompt, citing relevant Indian legal authorities such as the Constitution of India, IPC, CrPC, CPC, Evidence Act, Contract Act, Companies Act, SEBI regulations, RBI circulars, and Supreme Court/High Court judgments.
+
+Use the content from the provided document as primary context if it exists.
+
+{{#if contextDataUri}}
+Document Context:
+{{media url=contextDataUri}}
+{{/if}}
 
 Prompt: {{{prompt}}}
 `,

@@ -13,6 +13,7 @@ import {z} from 'genkit';
 
 const SummarizeContractAndIdentifyRisksInputSchema = z.object({
   contractText: z.string().describe('The legal contract to analyze as raw text.'),
+  contractDataUri: z.string().optional().describe("A document, as a data URI, that provides the contract content. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
 });
 export type SummarizeContractAndIdentifyRisksInput = z.infer<typeof SummarizeContractAndIdentifyRisksInputSchema>;
 
@@ -36,8 +37,17 @@ const prompt = ai.definePrompt({
 
 You will analyze the contract provided and summarize the key clauses, identify potential risks and missing clauses, and generate a risk report with suggested revisions.
 
+Prioritize the content from the uploaded document if it exists.
+
+{{#if contractDataUri}}
+Contract Document:
+{{media url=contractDataUri}}
+{{/if}}
+
+{{#if contractText}}
 Contract Text:
 {{{contractText}}}
+{{/if}}
 `,
 });
 
