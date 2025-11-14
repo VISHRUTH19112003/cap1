@@ -43,7 +43,7 @@ export function DocumentManager() {
 
   const docsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return query(collection(firestore, 'documents'), where('userId', '==', user.uid));
+    return query(collection(firestore, 'users', user.uid, 'documents'), where('userId', '==', user.uid));
   }, [user, firestore]);
   
   const { data: documents, isLoading: isLoadingDocs } = useCollection<Document>(docsQuery);
@@ -77,7 +77,7 @@ export function DocumentManager() {
       async () => {
         const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
         
-        addDocumentNonBlocking(collection(firestore, 'documents'), {
+        addDocumentNonBlocking(collection(firestore, 'users', user.uid, 'documents'), {
           userId: user.uid,
           filename: file.name,
           contentType: file.type,
@@ -100,7 +100,7 @@ export function DocumentManager() {
       return;
     }
 
-    const docRef = doc(firestore, 'documents', docToDelete.id);
+    const docRef = doc(firestore, 'users', user.uid, 'documents', docToDelete.id);
     const storageRef = ref(storage, docToDelete.storagePath);
 
     try {
@@ -131,7 +131,7 @@ export function DocumentManager() {
                   <FormItem>
                     <FormLabel>Document File</FormLabel>
                     <FormControl>
-                      <Input type="file" {...form.register('file')} />
+                      <Input type="file" {...form.register('file')} accept=".txt,.pdf,.doc,.docx" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -179,5 +179,3 @@ export function DocumentManager() {
     </div>
   );
 }
-
-    

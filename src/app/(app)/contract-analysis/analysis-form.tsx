@@ -81,6 +81,15 @@ ${analysisResult.riskReport}
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (file.type !== 'text/plain') {
+        toast({
+            variant: 'destructive',
+            title: 'Unsupported File Type',
+            description: 'Currently, only .txt files can be read for analysis. Support for other file types is coming soon.',
+        });
+        return;
+    }
+
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result;
@@ -133,7 +142,7 @@ ${analysisResult.riskReport}
                     </FormItem>
                   )}
                 />
-                <Input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".txt,.doc,.docx,.pdf" />
+                <Input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".txt,.pdf,.doc,.docx" />
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">

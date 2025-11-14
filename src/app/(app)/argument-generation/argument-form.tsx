@@ -58,6 +58,15 @@ export function ArgumentForm() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (file.type !== 'text/plain') {
+        toast({
+            variant: 'destructive',
+            title: 'Unsupported File Type',
+            description: 'Currently, only .txt files can be read for context. Support for other file types is coming soon.',
+        });
+        return;
+    }
+
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result;
@@ -124,7 +133,7 @@ export function ArgumentForm() {
                     </FormItem>
                   )}
                 />
-                 <Input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".txt,.doc,.docx,.pdf" />
+                 <Input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".txt,.pdf,.doc,.docx" />
               </CardContent>
               <CardFooter className="flex justify-between">
                 <Button type="submit" disabled={isLoading} variant="default" className='bg-primary text-primary-foreground'>
