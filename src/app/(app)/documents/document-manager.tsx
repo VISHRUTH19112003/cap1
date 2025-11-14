@@ -2,8 +2,8 @@
 'use client'
 
 import * as React from 'react';
-import { useUser, useFirestore, useStorage, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, query, onSnapshot, doc, serverTimestamp, where } from 'firebase/firestore';
+import { useUser, useFirestore, useStorage, addDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, useCollection } from '@/firebase';
+import { collection, query, doc, serverTimestamp, where } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -32,8 +32,7 @@ export function DocumentManager() {
   const { user } = useUser();
   const firestore = useFirestore();
   const storage = useStorage();
-  const [documents, setDocuments] = React.useState<Document[]>([]);
-  const [isLoadingDocs, setIsLoadingDocs] = React.useState(true);
+  
   const [isUploading, setIsUploading] = React.useState(false);
   const [uploadProgress, setUploadProgress] = React.useState(0);
   const { toast } = useToast();
@@ -42,23 +41,13 @@ export function DocumentManager() {
     resolver: zodResolver(formSchema),
   });
 
-  React.useEffect(() => {
-    if (!user || !firestore) return;
+  const docsQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(collection(firestore, 'documents'), where('userId', '==', user.uid));
+  }, [user, firestore]);
+  
+  const { data: documents, isLoading: isLoadingDocs } = useCollection<Document>(docsQuery);
 
-    setIsLoadingDocs(true);
-    const docsQuery = query(collection(firestore, 'documents'), where('userId', '==', user.uid));
-    const unsubscribe = onSnapshot(docsQuery, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Document));
-      setDocuments(docs);
-      setIsLoadingDocs(false);
-    }, (error) => {
-      console.error("Error fetching documents:", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch documents.' });
-      setIsLoadingDocs(false);
-    });
-
-    return () => unsubscribe();
-  }, [user, firestore, toast]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!user || !firestore || !storage) {
@@ -168,7 +157,7 @@ export function DocumentManager() {
             <div className="flex justify-center items-center h-40">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : documents.length > 0 ? (
+          ) : documents && documents.length > 0 ? (
             <ul className="space-y-3">
               {documents.map(doc => (
                 <li key={doc.id} className="flex items-center justify-between rounded-md border p-3">
@@ -190,3 +179,5 @@ export function DocumentManager() {
     </div>
   );
 }
+
+    
