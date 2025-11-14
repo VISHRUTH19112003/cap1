@@ -7,6 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Bot, Loader2, Download, Paperclip, X, Eye } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
@@ -16,6 +18,9 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { DocumentHistory } from '../documents/document-history'
+import { useUser, useFirestore, useStorage } from '@/firebase'
+import { Progress } from '@/components/ui/progress'
+
 
 const formSchema = z.object({
   contract: z.string(),
@@ -25,9 +30,14 @@ export function AnalysisForm() {
   const [analysisResult, setAnalysisResult] = React.useState<SummarizeContractAndIdentifyRisksOutput | null>(null)
   const [isLoading, setIsLoading] = React.useState(false)
   const [uploadedFile, setUploadedFile] = React.useState<{name: string, dataUri: string, blobUrl: string} | null>(null)
-  const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const [isUploading, setIsUploading] = React.useState(false);
+  const [uploadProgress, setUploadProgress] = React.useState(0);
 
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
   const { toast } = useToast()
+  const { user } = useUser()
+  const firestore = useFirestore()
+  const storage = useStorage()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -49,35 +59,101 @@ export function AnalysisForm() {
         return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const dataUri = e.target?.result as string;
-        const blobUrl = URL.createObjectURL(file);
-        setUploadedFile({ name: file.name, dataUri, blobUrl });
+    if (!user || !firestore || !storage) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Authentication or database service not available.' });
+      return;
+    }
 
-        if (file.type === 'text/plain') {
-            const textReader = new FileReader();
-            textReader.onload = (e) => {
-                form.setValue('contract', e.target?.result as string);
-            }
-            textReader.readAsText(file);
-        } else {
-             toast({
-                title: 'File ready for analysis',
-                description: `"${file.name}" will be sent to the AI. Its content will not be displayed here.`,
-            });
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    const storagePath = `users/${user.uid}/documents/${Date.now()}_${file.name}`;
+    const storageRef = ref(storage, storagePath);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on('state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadProgress(progress);
+      },
+      (error) => {
+        console.error("Upload error:", error);
+        toast({ variant: 'destructive', title: 'Upload Failed', description: 'An error occurred during upload.' });
+        setIsUploading(false);
+      },
+      async () => {
+        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+        
+        await addDoc(collection(firestore, 'users', user.uid, 'documents'), {
+          userId: user.uid,
+          filename: file.name,
+          contentType: file.type,
+          fileSize: file.size,
+          storagePath: storagePath,
+          downloadURL: downloadURL,
+          uploadDate: serverTimestamp(),
+        });
+        
+        setIsUploading(false);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
         }
-    };
-    reader.readAsDataURL(file);
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const dataUri = e.target?.result as string;
+            const blobUrl = URL.createObjectURL(file);
+            setUploadedFile({ name: file.name, dataUri, blobUrl });
+
+            if (file.type === 'text/plain') {
+                const textReader = new FileReader();
+                textReader.onload = (e) => {
+                    form.setValue('contract', e.target?.result as string);
+                }
+                textReader.readAsText(file);
+            } else {
+                 toast({
+                    title: 'File ready for analysis',
+                    description: `"${file.name}" will be sent to the AI. Its content will not be displayed here.`,
+                });
+            }
+        };
+        reader.readAsDataURL(file);
+        
+        toast({ title: 'Success', description: 'Document uploaded and ready to use.' });
+      }
+    );
   }
 
-  const handleFileFromHistory = ({name, dataUri}: {name: string, dataUri: string}) => {
-     const blobUrl = dataUri; // For viewing, data URI works fine
-     setUploadedFile({name, dataUri, blobUrl});
+  const handleFileFromHistory = async (doc: {id: string, filename: string, downloadURL: string}) => {
+     try {
+      const response = await fetch(doc.downloadURL);
+      if (!response.ok) {
+        throw new Error('Failed to fetch file from storage.');
+      }
+      const blob = await response.blob();
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUri = e.target?.result as string;
+        const blobUrl = URL.createObjectURL(blob);
+        setUploadedFile({ name: doc.filename, dataUri, blobUrl });
+      };
+      reader.readAsDataURL(blob);
+
       toast({
         title: 'Document Selected',
-        description: `Using "${name}" from your history as context.`
+        description: `Using "${doc.filename}" from your history as context.`
       });
+
+    } catch (error) {
+      console.error('Error using file from history:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not load the selected document from history.',
+      });
+    }
   }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -90,6 +166,7 @@ export function AnalysisForm() {
           title: 'Input Required',
           description: 'Please provide contract text or upload a document.',
         })
+        setIsLoading(false);
         return;
       }
       
@@ -112,9 +189,6 @@ export function AnalysisForm() {
   
   const handleRemoveFile = () => {
     setUploadedFile(null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
   }
 
   const handleDownload = () => {
@@ -172,19 +246,26 @@ ${analysisResult.riskReport}
                     )}
                   />
                   <FormItem>
-                    <FormLabel>Upload Document (Optional)</FormLabel>
+                    <FormLabel>Upload Document</FormLabel>
                     <FormControl>
                       <Input
                         type="file"
                         accept=".txt,.pdf"
                         onChange={handleFileChange}
                         ref={fileInputRef}
+                        disabled={isUploading}
                       />
                     </FormControl>
                     <FormDescription>
-                      Upload a .txt or .pdf file for analysis.
+                       Upload a .txt or .pdf file for analysis. This will also save it to your Document History.
                     </FormDescription>
                   </FormItem>
+                  {isUploading && (
+                    <div className="space-y-2">
+                      <Progress value={uploadProgress} />
+                      <p className="text-sm text-muted-foreground">Uploading file...</p>
+                    </div>
+                  )}
                   {uploadedFile && (
                     <div className="flex items-center justify-between rounded-md border bg-muted/50 p-2 text-sm">
                       <div className="flex items-center gap-2">
@@ -214,7 +295,7 @@ ${analysisResult.riskReport}
                 </div>
               </CardContent>
               <CardFooter className="flex justify-start">
-                <Button type="submit" disabled={isLoading}>
+                <Button type="submit" disabled={isLoading || isUploading}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Analyze
                 </Button>
@@ -277,3 +358,5 @@ ${analysisResult.riskReport}
     </div>
   )
 }
+
+    

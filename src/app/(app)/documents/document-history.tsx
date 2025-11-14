@@ -1,8 +1,9 @@
+
 'use client';
 
 import * as React from 'react';
 import { useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import { Loader2, FileText, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,10 +14,14 @@ interface Document {
   filename: string;
   downloadURL: string;
   contentType: string;
+  uploadDate: {
+    seconds: number;
+    nanoseconds: number;
+  }
 }
 
 interface DocumentHistoryProps {
-  onFileSelect: (file: { name: string; dataUri: string }) => void;
+  onFileSelect: (file: { id: string; filename: string; downloadURL: string }) => void;
 }
 
 export function DocumentHistory({ onFileSelect }: DocumentHistoryProps) {
@@ -25,35 +30,19 @@ export function DocumentHistory({ onFileSelect }: DocumentHistoryProps) {
 
   const docsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return query(collection(firestore, 'users', user.uid, 'documents'), where('userId', '==', user.uid));
+    return query(
+      collection(firestore, 'users', user.uid, 'documents'), 
+      where('userId', '==', user.uid),
+      orderBy('uploadDate', 'desc')
+    );
   }, [user, firestore]);
   
   const { data: documents, isLoading: isLoadingDocs } = useCollection<Document>(docsQuery);
   const [selectedFileId, setSelectedFileId] = React.useState<string | null>(null);
 
-  const handleUseFile = async (doc: Document) => {
-    try {
-      // Firebase Storage CORS rules may prevent direct fetch in the browser.
-      // A more robust solution might involve a Cloud Function proxy,
-      // but for this implementation, we assume CORS is configured to allow reads.
-      const response = await fetch(doc.downloadURL);
-      if (!response.ok) {
-        throw new Error('Failed to fetch file from storage.');
-      }
-      const blob = await response.blob();
-      
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUri = e.target?.result as string;
-        onFileSelect({ name: doc.filename, dataUri });
-        setSelectedFileId(doc.id);
-      };
-      reader.readAsDataURL(blob);
-
-    } catch (error) {
-      console.error('Error using file:', error);
-      // Fallback or error message
-    }
+  const handleUseFile = (doc: Document) => {
+    onFileSelect({ id: doc.id, filename: doc.filename, downloadURL: doc.downloadURL });
+    setSelectedFileId(doc.id);
   };
 
   return (
@@ -68,7 +57,7 @@ export function DocumentHistory({ onFileSelect }: DocumentHistoryProps) {
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : documents && documents.length > 0 ? (
-          <ScrollArea className="h-48">
+          <ScrollArea className="h-96">
             <ul className="space-y-3">
               {documents.map(doc => (
                 <li key={doc.id} className="flex items-center justify-between rounded-md border p-3">
@@ -91,3 +80,5 @@ export function DocumentHistory({ onFileSelect }: DocumentHistoryProps) {
     </Card>
   );
 }
+
+    
