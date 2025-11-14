@@ -111,7 +111,6 @@ ${analysisResult.riskReport}
         }
         textReader.readAsText(file);
       } else {
-        form.setValue('contract', ''); 
         toast({
           title: 'File Ready for Analysis',
           description: `${file.name} is ready. Its content won't be displayed but will be used by the AI.`,
@@ -130,7 +129,6 @@ ${analysisResult.riskReport}
 
   const handleRemoveFile = () => {
     setUploadedFile(null);
-    form.setValue('contract', '');
     if(fileInputRef.current) fileInputRef.current.value = '';
   }
 

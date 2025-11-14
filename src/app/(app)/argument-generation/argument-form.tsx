@@ -75,6 +75,7 @@ export function ArgumentForm() {
       setUploadedFile({ name: file.name, dataUri });
       
       if (file.type === 'text/plain') {
+        // To read file content as text
         const textReader = new FileReader();
         textReader.onload = (e) => {
           const text = e.target?.result as string;
@@ -86,7 +87,7 @@ export function ArgumentForm() {
         }
         textReader.readAsText(file);
       } else {
-        form.setValue('prompt', '');
+        // For other file types, we don't load content into the textarea
         toast({
           title: 'File Ready for Context',
           description: `${file.name} is ready. Its content won't be displayed but will be used by the AI.`,
@@ -119,7 +120,7 @@ export function ArgumentForm() {
 
   const handleRemoveFile = () => {
     setUploadedFile(null);
-    form.setValue('prompt', '');
+    // Don't clear the prompt automatically
     if(fileInputRef.current) fileInputRef.current.value = '';
   }
 
@@ -143,7 +144,7 @@ export function ArgumentForm() {
                       <FormLabel>Legal Prompt</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="e.g., Argue for bail in a case of alleged theft where the evidence is purely circumstantial..."
+                          placeholder="e.g., Argue for bail in a case of alleged theft where the evidence is purely circumstantial... Or upload a document below."
                           className="min-h-[300px] resize-y"
                           {...field}
                         />
