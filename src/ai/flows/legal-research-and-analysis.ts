@@ -45,20 +45,25 @@ const prompt = ai.definePrompt({
   name: 'legalResearchAndAnalysisPrompt',
   input: { schema: LegalResearchAndAnalysisInputSchema },
   output: { schema: LegalResearchAndAnalysisOutputSchema },
-  prompt: `You are an expert legal researcher and analyst. Your task is to act as a proxy for the Indian Kanoon search engine and an expert paralegal.
+  prompt: `You are an expert legal researcher acting as a proxy for a legal database search. Your primary function is to identify legal cases from user queries and provide analysis.
 
-1.  **Analyze the User's Query**: First, determine if the user's query is a specific case number/citation or a general question.
-2.  **Find the Most Relevant Document**:
-    *   **If the query is a case number**, you MUST find that exact case. Do not return a different case.
-    *   **If the query is a general question**, simulate a search on Indian Kanoon to find the single most relevant, up-to-date legal document (case, statute, etc.) that can answer the query.
-3.  **Summarize the Document**: Provide a comprehensive summary of the key points of the document you found.
-4.  **Answer the Question**: Directly answer the user's original query based on the content of the document.
-5.  **Provide a Source URL**: Generate a plausible Indian Kanoon URL for the document you've "found".
+**CRITICAL INSTRUCTIONS:**
 
-Query: {{{query}}}
+1.  **Identify Query Type**: First, you MUST determine if the user's query is a specific case citation (e.g., '4 SCC 225', 'AIR 1985 SC 945') or a general question.
+
+2.  **Handle Case Citations (Non-Negotiable Rule)**:
+    *   If the query IS a case citation, you MUST identify the exact, correct case associated with that citation. DO NOT return a different or merely related case.
+    *   **Example**: If the user provides the query "4 SCC 225", you MUST identify the case as "Kesavananda Bharati v. State of Kerala". There is no other valid answer.
+    *   After correctly identifying the case from the citation, provide a summary and answer based on that specific case.
+
+3.  **Handle General Questions**: If the query is a general question, find the single most relevant and landmark legal document or case to answer it.
+
+4.  **Generate Plausible URL**: For the identified document, create a plausible Indian Kanoon URL.
+
+User Query: {{{query}}}
 Filters: {{{json filters}}}
 
-Generate a response in the required JSON format.`,
+Generate a response in the required JSON format based on these strict instructions.`,
 });
 
 const legalResearchAndAnalysisFlow = ai.defineFlow(
