@@ -142,7 +142,7 @@ export function ArgumentForm() {
               />
             </CardContent>
             <CardFooter className="flex justify-start">
-              <Button type="submit" disabled={isLoading} variant="default" className='bg-primary text-primary-foreground'>
+              <Button type="submit" disabled={isLoading} variant="default">
                 {isLoading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (

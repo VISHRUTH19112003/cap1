@@ -4,7 +4,7 @@
 import * as React from 'react'
 import { summarizeContractAndIdentifyRisks, type SummarizeContractAndIdentifyRisksOutput } from '@/ai/flows/summarize-contract-and-identify-risks'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Bot, Loader2, Download, Upload } from 'lucide-react'
+import { Bot, Loader2, Sparkles, Download, Upload } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -59,10 +59,14 @@ export function AnalysisForm() {
 
     const reportContent = `
 NyayaGPT Analysis Report
+=======================
+
 [Key Clause Summary]
+--------------------
 ${analysisResult.summary}
----
+
 [Risk & Revision Report]
+--------------------------
 ${analysisResult.riskReport}
     `
 
@@ -153,9 +157,13 @@ ${analysisResult.riskReport}
               </div>
             </CardContent>
             <CardFooter className="flex justify-start">
-              <Button type="submit" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Analyze
+               <Button type="submit" disabled={isLoading} variant="default">
+                {isLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-2 h-4 w-4" />
+                )}
+                Analyze Contract
               </Button>
             </CardFooter>
           </form>
