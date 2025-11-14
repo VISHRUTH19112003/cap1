@@ -4,7 +4,7 @@
 import * as React from 'react'
 import { generateLegalArgument } from '@/ai/flows/generate-legal-argument'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Bot, Loader2, Sparkles, Download } from 'lucide-react'
+import { Bot, Loader2, Sparkles, Download, Upload } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -14,6 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Input } from '@/components/ui/input'
 
 const formSchema = z.object({
   prompt: z.string().min(10, { message: 'Please enter a prompt with at least 10 characters.' }),
@@ -23,6 +24,7 @@ export function ArgumentForm() {
   const [generatedArgument, setGeneratedArgument] = React.useState<string | null>(null)
   const [isLoading, setIsLoading] = React.useState(false)
   const { toast } = useToast()
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -65,6 +67,35 @@ export function ArgumentForm() {
     URL.revokeObjectURL(url)
   }
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (file.type === 'text/plain') {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const text = e.target?.result as string
+        form.setValue('prompt', text)
+        toast({
+          title: 'File Content Loaded',
+          description: `${file.name} content has been loaded into the text area.`,
+        })
+      }
+      reader.readAsText(file)
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Unsupported File Type',
+        description: 'Please upload a .txt file.',
+      })
+    }
+    // Reset file input
+    if(fileInputRef.current) {
+        fileInputRef.current.value = ''
+    }
+  }
+
+
   return (
     <div className="grid grid-cols-1 gap-8">
       <Card>
@@ -82,7 +113,22 @@ export function ArgumentForm() {
                 name="prompt"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Legal Prompt</FormLabel>
+                    <div className="flex justify-between items-center">
+                      <FormLabel>Legal Prompt</FormLabel>
+                      <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                        <Upload className="mr-2 h-4 w-4" />
+                        Upload Document
+                      </Button>
+                      <FormControl>
+                        <Input
+                            type="file"
+                            className="hidden"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            accept=".txt"
+                        />
+                      </FormControl>
+                    </div>
                     <FormControl>
                       <Textarea
                         placeholder="e.g., Argue for bail in a case of alleged theft where the evidence is purely circumstantial..."
