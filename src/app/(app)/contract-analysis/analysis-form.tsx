@@ -85,7 +85,7 @@ ${analysisResult.riskReport}
         toast({
             variant: 'destructive',
             title: 'Unsupported File Type',
-            description: 'Currently, only .txt files can be read for analysis. Support for other file types is coming soon.',
+            description: 'PDF support is coming soon. For now, please use .txt files.',
         });
         return;
     }
