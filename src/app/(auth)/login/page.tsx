@@ -51,7 +51,6 @@ export default function LoginPage() {
   });
 
   React.useEffect(() => {
-    // Redirect only if user is loaded and verified
     if (!isUserLoading && user?.emailVerified) {
       router.push('/dashboard');
     }
@@ -64,13 +63,8 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
 
       if (userCredential.user.emailVerified) {
-        toast({
-          title: 'Login Successful',
-          description: "You're now logged in.",
-        });
         router.push('/dashboard');
       } else {
-        // If email is not verified, sign the user out and show a message
         await signOut(auth);
         toast({
           variant: 'destructive',
