@@ -1,35 +1,34 @@
 /**
- * @fileoverview Firestore Security Rules for NyayaGPT application.
+ * @file Firestore Security Rules for NyayaGPT.
  *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for all data. Each user has complete control over their own data tree,
- * while other users are denied access. All writes are validated against the authenticated user's ID.
+ * Core Philosophy: This ruleset enforces a strict user-ownership model for user profiles, documents, and application settings.
+ * All data is nested under /users/{userId}, ensuring that only the authenticated user can access their own data.
  *
  * Data Structure:
- * All data is nested under /users/{userId}, ensuring clear ownership. This includes user profiles, documents, search queries,
- * legal arguments, contract analyses, and settings.
+ * - /users/{userId}: Stores UserProfile data.
+ * - /users/{userId}/documents/{documentId}: Stores legal documents uploaded by each user.
+ * - /users/{userId}/applicationSettings/{settingId}: Stores user-specific application settings.
  *
  * Key Security Decisions:
- * - User listing is explicitly denied to prevent unauthorized access to user data.
- * - All data is private by default. No public collections are defined.
- * - All write operations require authentication and authorization based on the user ID in the path.
+ * - User listing is implicitly denied (no rule allows it).
+ * - The rules explicitly deny any write operation that attempts to violate the ownership model.
+ * - Data validation is relaxed during this prototyping phase with the exception of critical fields such as userId.
  *
- * Authorization Denormalization:
- * The rules rely on path-based ownership. The authenticated user's ID is compared to the userId path parameter to grant access.
- * No additional database reads (get() calls) are needed for authorization, ensuring optimal performance and security.
+ * Denormalization for Authorization:
+ * - Each Document and ApplicationSetting stores a userId field, which is validated against the path to prevent unauthorized access.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Enforces access control for user profile data. Only the authenticated user can read or write their own profile.
+     * @description Controls access to user profiles.
      * @path /users/{userId}
-     * @allow (create, update, delete): If the authenticated user's ID matches the userId in the path.
-     * @allow (get, list): If the authenticated user's ID matches the userId in the path.
-     * @deny (create, update, delete): If the authenticated user's ID does not match the userId in the path.
-     * @deny (get, list): If the authenticated user's ID does not match the userId in the path.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) - Authenticated user can create their own profile if the userId matches their auth UID.
+     * @allow (get, update, delete) - Authenticated user can get, update, and delete their own profile if the userId matches their auth UID.
+     * @deny (create) - User cannot create a profile with a userId that does not match their auth UID.
+     * @deny (update, delete) - User cannot update or delete another user's profile.
+     * @principle Enforces document ownership for writes, restricts access to a user's own data tree, and validates relational integrity between documents.
      */
     match /users/{userId} {
       function isSignedIn() {
@@ -37,25 +36,29 @@ service cloud.firestore {
       }
 
       function isOwner(userId) {
-        return isSignedIn() && request.auth.uid == userId;
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
       }
 
       allow get: if isOwner(userId);
-      allow list: if false; // Explicitly prevent listing all users
+      allow list: if false;
 
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && resource != null;
-      allow delete: if isOwner(userId) && resource != null;
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Enforces access control for user documents. Only the authenticated user can read or write their own documents.
+     * @description Controls access to user documents.
      * @path /users/{userId}/documents/{documentId}
-     * @allow (create, update, delete): If the authenticated user's ID matches the userId in the path.
-     * @allow (get, list): If the authenticated user's ID matches the userId in the path.
-     * @deny (create, update, delete): If the authenticated user's ID does not match the userId in the path.
-     * @deny (get, list): If the authenticated user's ID does not match the userId in the path.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) - Authenticated user can create a document under their userId if the document's userId matches the path.
+     * @allow (get, list, update, delete) - Authenticated user can get, list, update, and delete their own documents if the document's userId matches their auth UID.
+     * @deny (create) - User cannot create a document with a userId that does not match their auth UID.
+     * @deny (update, delete) - User cannot update or delete another user's document.
+     * @principle Enforces document ownership for writes, restricts access to a user's own data tree, and validates relational integrity between documents.
      */
     match /users/{userId}/documents/{documentId} {
       function isSignedIn() {
@@ -63,119 +66,47 @@ service cloud.firestore {
       }
 
       function isOwner(userId) {
-        return isSignedIn() && request.auth.uid == userId;
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
       }
 
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && resource != null;
-      allow delete: if isOwner(userId) && resource != null;
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Enforces access control for user legal search queries. Only the authenticated user can read or write their own legal search queries.
-     * @path /users/{userId}/legalSearchQueries/{legalSearchQueryId}
-     * @allow (create, update, delete): If the authenticated user's ID matches the userId in the path.
-     * @allow (get, list): If the authenticated user's ID matches the userId in the path.
-     * @deny (create, update, delete): If the authenticated user's ID does not match the userId in the path.
-     * @deny (get, list): If the authenticated user's ID does not match the userId in the path.
-     * @principle Enforces document ownership for all operations.
+     * @description Controls access to user application settings.
+     * @path /users/{userId}/applicationSettings/{settingId}
+     * @allow (create) - Authenticated user can create application settings under their userId if the setting's userId matches the path.
+     * @allow (get, list, update, delete) - Authenticated user can get, list, update, and delete their own application settings if the setting's userId matches their auth UID.
+     * @deny (create) - User cannot create application settings with a userId that does not match their auth UID.
+     * @deny (update, delete) - User cannot update or delete another user's application settings.
+     * @principle Enforces document ownership for writes, restricts access to a user's own data tree, and validates relational integrity between documents.
      */
-    match /users/{userId}/legalSearchQueries/{legalSearchQueryId} {
+    match /users/{userId}/applicationSettings/{settingId} {
       function isSignedIn() {
         return request.auth != null;
       }
 
       function isOwner(userId) {
-        return isSignedIn() && request.auth.uid == userId;
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
       }
 
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && resource != null;
-      allow delete: if isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Enforces access control for user legal arguments. Only the authenticated user can read or write their own legal arguments.
-     * @path /users/{userId}/legalArguments/{legalArgumentId}
-     * @allow (create, update, delete): If the authenticated user's ID matches the userId in the path.
-     * @allow (get, list): If the authenticated user's ID matches the userId in the path.
-     * @deny (create, update, delete): If the authenticated user's ID does not match the userId in the path.
-     * @deny (get, list): If the authenticated user's ID does not match the userId in the path.
-     * @principle Enforces document ownership for all operations.
-     */
-    match /users/{userId}/legalArguments/{legalArgumentId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return isSignedIn() && request.auth.uid == userId;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && resource != null;
-      allow delete: if isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Enforces access control for user contract analyses. Only the authenticated user can read or write their own contract analyses.
-     * @path /users/{userId}/contractAnalyses/{contractAnalysisId}
-     * @allow (create, update, delete): If the authenticated user's ID matches the userId in the path.
-     * @allow (get, list): If the authenticated user's ID matches the userId in the path.
-     * @deny (create, update, delete): If the authenticated user's ID does not match the userId in the path.
-     * @deny (get, list): If the authenticated user's ID does not match the userId in the path.
-     * @principle Enforces document ownership for all operations.
-     */
-    match /users/{userId}/contractAnalyses/{contractAnalysisId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return isSignedIn() && request.auth.uid == userId;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && resource != null;
-      allow delete: if isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Enforces access control for user settings. Only the authenticated user can read or write their own settings.
-     * @path /users/{userId}/settings/{settingId}
-     * @allow (create, update, delete): If the authenticated user's ID matches the userId in the path.
-     * @allow (get, list): If the authenticated user's ID matches the userId in the path.
-     * @deny (create, update, delete): If the authenticated user's ID does not match the userId in the path.
-     * @deny (get, list): If the authenticated user's ID does not match the userId in the path.
-     * @principle Enforces document ownership for all operations.
-     */
-    match /users/{userId}/settings/{settingId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return isSignedIn() && request.auth.uid == userId;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && resource != null;
-      allow delete: if isOwner(userId) && resource != null;
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isExistingOwner(userId);
     }
   }
 }

@@ -1,10 +1,8 @@
-
 export const firebaseConfig = {
-  "projectId": "nyayagpt-426415",
-  "appId": "1:247681701203:web:e41d8c117e30217c94fda6",
-  "apiKey": "AIzaSyAzGVK9rd_7GH4zbKHvbDXpNFV-drbpNA0",
-  "authDomain": "nyayagpt-426415.firebaseapp.com",
-  "storageBucket": "nyayagpt-426415.appspot.com",
-  "measurementId": "G-53091211E0",
+  "projectId": "studio-4588793295-cb701",
+  "appId": "1:247681701203:web:e7f6c6257065cf5f94fda6",
+  "apiKey": "AIzaSyAYTEYdyk5mOddAseG00znINtFCYohomKY",
+  "authDomain": "studio-4588793295-cb701.firebaseapp.com",
+  "measurementId": "",
   "messagingSenderId": "247681701203"
 };

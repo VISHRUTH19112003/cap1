@@ -1,39 +1,44 @@
 {
   "entities": {
-    "User": {
+    "UserProfile": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "User",
+      "title": "UserProfile",
       "type": "object",
-      "description": "Represents a user of the NyayaGPT application.",
+      "description": "Represents a user's profile in the NyayaGPT application.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the User entity."
+          "description": "Unique identifier for the user profile."
         },
         "email": {
           "type": "string",
-          "description": "Email address of the user.",
+          "description": "User's email address.",
           "format": "email"
         },
-        "profileName": {
+        "firstName": {
           "type": "string",
-          "description": "The display name chosen by the user."
+          "description": "User's first name."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "User's last name."
         },
         "createdAt": {
           "type": "string",
-          "description": "Timestamp indicating when the user account was created.",
+          "description": "Timestamp indicating when the user profile was created.",
           "format": "date-time"
         },
         "updatedAt": {
           "type": "string",
-          "description": "Timestamp indicating when the user account was last updated.",
+          "description": "Timestamp indicating when the user profile was last updated.",
           "format": "date-time"
         }
       },
       "required": [
         "id",
         "email",
-        "profileName",
+        "firstName",
+        "lastName",
         "createdAt",
         "updatedAt"
       ]
@@ -46,186 +51,87 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Document entity."
+          "description": "Unique identifier for the document."
         },
         "userId": {
           "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N Document)"
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N Document)"
         },
-        "filename": {
+        "fileName": {
           "type": "string",
-          "description": "Original filename of the uploaded document."
+          "description": "Original file name of the uploaded document."
         },
-        "contentType": {
+        "fileType": {
           "type": "string",
-          "description": "MIME type of the document (e.g., application/pdf)."
+          "description": "MIME type of the uploaded document (e.g., application/pdf)."
+        },
+        "fileSize": {
+          "type": "number",
+          "description": "Size of the uploaded document in bytes."
         },
         "uploadDate": {
           "type": "string",
           "description": "Timestamp indicating when the document was uploaded.",
           "format": "date-time"
         },
-        "fileSize": {
-          "type": "number",
-          "description": "Size of the document in bytes."
-        },
-        "storageLocation": {
+        "jurisdiction": {
           "type": "string",
-          "description": "Location where the document is stored (e.g., S3 bucket URL)."
+          "description": "The jurisdiction of the document (e.g., 'Indian Law')."
+        },
+        "legalTaxonomy": {
+          "type": "string",
+          "description": "Legal taxonomy or category of the document."
         }
       },
       "required": [
         "id",
         "userId",
-        "filename",
-        "contentType",
-        "uploadDate",
+        "fileName",
+        "fileType",
         "fileSize",
-        "storageLocation"
+        "uploadDate",
+        "jurisdiction",
+        "legalTaxonomy"
       ]
     },
-    "LegalSearchQuery": {
+    "ApplicationSetting": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "LegalSearchQuery",
+      "title": "ApplicationSetting",
       "type": "object",
-      "description": "Represents a legal search query performed by a user.",
+      "description": "Represents user-specific application settings.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the LegalSearchQuery entity."
+          "description": "Unique identifier for the application setting."
         },
         "userId": {
           "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N LegalSearchQuery)"
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N ApplicationSetting)"
         },
-        "queryText": {
+        "defaultPage": {
           "type": "string",
-          "description": "The text of the legal search query."
+          "description": "User's preferred default page upon login."
         },
-        "timestamp": {
+        "language": {
           "type": "string",
-          "description": "Timestamp indicating when the search query was performed.",
-          "format": "date-time"
+          "description": "User's preferred language."
         },
-        "results": {
-          "type": "array",
-          "description": "List of document IDs returned as search results.",
-          "items": {
-            "type": "string"
-          }
+        "aiModelParameters": {
+          "type": "string",
+          "description": "Serialized AI model parameters (e.g., JSON string)."
+        },
+        "privacyOptions": {
+          "type": "string",
+          "description": "Serialized privacy options (e.g., JSON string)."
         }
       },
       "required": [
         "id",
         "userId",
-        "queryText",
-        "timestamp",
-        "results"
-      ]
-    },
-    "LegalArgument": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "LegalArgument",
-      "type": "object",
-      "description": "Represents a legal argument generated by the AI.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the LegalArgument entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N LegalArgument)"
-        },
-        "prompt": {
-          "type": "string",
-          "description": "The user's input prompt used to generate the argument."
-        },
-        "argumentText": {
-          "type": "string",
-          "description": "The generated legal argument text."
-        },
-        "timestamp": {
-          "type": "string",
-          "description": "Timestamp indicating when the argument was generated.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "prompt",
-        "argumentText",
-        "timestamp"
-      ]
-    },
-    "ContractAnalysis": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ContractAnalysis",
-      "type": "object",
-      "description": "Represents an analysis of a legal contract.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the ContractAnalysis entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N ContractAnalysis)"
-        },
-        "documentId": {
-          "type": "string",
-          "description": "Reference to Document. (Relationship: Document 1:N ContractAnalysis) The ID of the document being analyzed, if uploaded."
-        },
-        "contractText": {
-          "type": "string",
-          "description": "The text of the contract being analyzed (if not uploaded as a document)."
-        },
-        "analysisReport": {
-          "type": "string",
-          "description": "The analysis report generated by the AI."
-        },
-        "timestamp": {
-          "type": "string",
-          "description": "Timestamp indicating when the analysis was performed.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "timestamp",
-        "analysisReport"
-      ]
-    },
-    "Setting": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Setting",
-      "type": "object",
-      "description": "Represents a user-configurable application setting.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Setting entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N Setting)"
-        },
-        "settingKey": {
-          "type": "string",
-          "description": "The name/key of the setting."
-        },
-        "settingValue": {
-          "type": "string",
-          "description": "The value of the setting."
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "settingKey",
-        "settingValue"
+        "defaultPage",
+        "language",
+        "aiModelParameters",
+        "privacyOptions"
       ]
     }
   },
@@ -240,15 +146,15 @@
       {
         "path": "/users/{userId}",
         "definition": {
-          "entityName": "User",
+          "entityName": "UserProfile",
           "schema": {
-            "$ref": "#/backend/entities/User"
+            "$ref": "#/backend/entities/UserProfile"
           },
-          "description": "Stores user profile information.  Path-based ownership ensures only the authenticated user can access their own profile.",
+          "description": "Stores user profiles. Includes parameters to ensure that the correct user id is used for authorization.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique ID of the user."
+              "description": "The unique identifier for the user.  Used to control access to the UserProfile data."
             }
           ]
         }
@@ -260,100 +166,40 @@
           "schema": {
             "$ref": "#/backend/entities/Document"
           },
-          "description": "Stores legal documents uploaded by users. Path-based ownership ensures only the authenticated user can access their own documents.",
+          "description": "Stores legal documents uploaded by users. Documents are stored under the userId for easy retrieval and management. Includes parameters to ensure that the correct user and document ID is used for authorization.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique ID of the user."
+              "description": "The unique identifier for the user who owns the document.  Used to control access to the Document data."
             },
             {
               "name": "documentId",
-              "description": "The unique ID of the document."
+              "description": "The unique identifier for the document."
             }
           ]
         }
       },
       {
-        "path": "/users/{userId}/legalSearchQueries/{legalSearchQueryId}",
+        "path": "/users/{userId}/applicationSettings/{settingId}",
         "definition": {
-          "entityName": "LegalSearchQuery",
+          "entityName": "ApplicationSetting",
           "schema": {
-            "$ref": "#/backend/entities/LegalSearchQuery"
+            "$ref": "#/backend/entities/ApplicationSetting"
           },
-          "description": "Stores legal search queries performed by users. Path-based ownership ensures only the authenticated user can access their own search queries.",
+          "description": "Stores user-specific application settings. Includes parameters to ensure that the correct user and settings ID is used for authorization.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique ID of the user."
-            },
-            {
-              "name": "legalSearchQueryId",
-              "description": "The unique ID of the legal search query."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/legalArguments/{legalArgumentId}",
-        "definition": {
-          "entityName": "LegalArgument",
-          "schema": {
-            "$ref": "#/backend/entities/LegalArgument"
-          },
-          "description": "Stores legal arguments generated by the AI for users. Path-based ownership ensures only the authenticated user can access their own legal arguments.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique ID of the user."
-            },
-            {
-              "name": "legalArgumentId",
-              "description": "The unique ID of the legal argument."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/contractAnalyses/{contractAnalysisId}",
-        "definition": {
-          "entityName": "ContractAnalysis",
-          "schema": {
-            "$ref": "#/backend/entities/ContractAnalysis"
-          },
-          "description": "Stores contract analyses generated by the AI for users. Path-based ownership ensures only the authenticated user can access their own contract analyses.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique ID of the user."
-            },
-            {
-              "name": "contractAnalysisId",
-              "description": "The unique ID of the contract analysis."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/settings/{settingId}",
-        "definition": {
-          "entityName": "Setting",
-          "schema": {
-            "$ref": "#/backend/entities/Setting"
-          },
-          "description": "Stores user-specific settings. Path-based ownership ensures only the authenticated user can access their own settings.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique ID of the user."
+              "description": "The unique identifier for the user who owns the application setting. Used to control access to the ApplicationSetting data."
             },
             {
               "name": "settingId",
-              "description": "The unique ID of the setting."
+              "description": "The unique identifier for the application setting."
             }
           ]
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to ensure Authorization Independence, DBAC, and QAPs. It leverages path-based ownership for private user data and denormalization where necessary to avoid `get()` calls in security rules.\n\n*   **User Data:**  User profiles and settings are stored under `/users/{userId}`. This ensures that only the authenticated user can access their own data.\n*   **Documents, Queries, Arguments, Contract Analyses:** These are stored under `/users/{userId}/{collection}/{entityId}` enabling easy ownership-based access control. This structure directly represents the `User 1:N Entity` relationships.\n\nThis structure achieves **Authorization Independence** because access control is determined by the path and the authenticated user's ID (`request.auth.uid`) without requiring additional database reads (`get()` calls).  **QAPs (Rules are not Filters)** is supported because listing operations are naturally scoped to the user's data, so security rules don't need to filter based on document content.  **DBAC** is achieved by using `request.auth.uid` exclusively for authentication and authorization, without relying on custom claims."
+    "reasoning": "The Firestore data structure is designed to ensure security, scalability, and ease of debugging, in accordance with the principles of Authorization Independence, Clarity of Intent, DBAC, and QAPs.\n\n**Authorization Independence:**\n\n*   User profiles, documents, and application settings are all structured to avoid hierarchical authorization dependencies. Each document stores all the information necessary to determine access rights, eliminating the need for `get()` calls in security rules. Specifically, documents are stored under the user's ID `/users/{userId}/documents/{documentId}`, application settings are stored under the user's id `/users/{userId}/applicationSettings/{settingId}`. This ensures that each document and application setting is directly tied to a user.\n\n**Clarity of Intent:**\n\n*   The structure is designed to make authorization intent explicit. Ownership is clearly defined by the hierarchical path structure, and access control is directly tied to the user ID.\n\n**DBAC (No Custom Claims):**\n\n*   Authorization relies solely on `request.auth.uid`. No custom claims are used. Roles or permissions are not explicitly modeled in this iteration but if needed in the future can be added as separate documents under each user. Example: `/users/{userId}/roles/{roleId}`\n\n**QAPs (Rules are not Filters):**\n\n*   The structure supports secure `list` operations by segregating data based on ownership. Listing documents or application settings under `/users/{userId}` is secure because the rules can easily check if `request.auth.uid == userId`.\n\n**Invariants:**\n\n*   The structure supports the integrity of ownership because each document is stored under the user's ID. Timestamps such as `createdAt` and `updatedAt` are stored directly in the `UserProfile`, `Document`, and `ApplicationSetting` entities. Denormalization is primarily focused on ownership, ensuring that access control data is readily available within each document.\n\n**Structural Segregation:**\n\n*   User profiles, documents, and application settings are stored in separate collections or subcollections to avoid mixing data with different access needs.\n\n**Access Modeling:**\n\n*   Path-based ownership is used for private data. Documents and application settings are stored under `/users/{userId}`.\n\n**Data Clarity and Predictability:**\n\n*   Explicit state modeling and predictable schema conventions are followed. Naming conventions are strict and semantic (e.g., `userId`, `documentId`, `settingId`)."
   }
 }
