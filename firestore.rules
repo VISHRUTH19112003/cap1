@@ -35,13 +35,9 @@ service cloud.firestore {
       allow create: if request.auth.uid == userId && request.resource.data.id == userId;
 
       /**
-       * @description Controls access to user documents.
-       * @path /users/{userId}/documents/{documentId}
-       * @allow (create) - Authenticated user can create a document under their userId if the document's userId matches the path.
-       * @allow (get, list, update, delete) - Authenticated user can get, list, update, and delete their own documents if the document's userId matches their auth UID.
-       * @deny (create) - User cannot create a document with a userId that does not match their auth UID.
-       * @deny (update, delete) - User cannot update or delete another user's document.
-       * @principle Enforces document ownership for writes, restricts access to a user's own data tree, and validates relational integrity between documents.
+       * @description Controls access to the user's documents collection.
+       * @path /users/{userId}/documents
+       * @allow (list) - Authenticated user can list their own documents.
        */
       match /documents/{documentId} {
         allow list, get: if request.auth.uid == userId;
