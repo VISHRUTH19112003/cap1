@@ -32,10 +32,6 @@ export function MainNav() {
       href: '/search',
       label: 'Legal Search',
     },
-    {
-      href: '/documents',
-      label: 'Documents',
-    },
   ]
 
   const renderNavItem = ({ href, label }: NavItem) => {

@@ -4,40 +4,25 @@
 import * as React from 'react'
 import { summarizeContractAndIdentifyRisks, type SummarizeContractAndIdentifyRisksOutput } from '@/ai/flows/summarize-contract-and-identify-risks'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Bot, Loader2, Download, Paperclip, X, Eye } from 'lucide-react'
+import { Bot, Loader2, Download } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
-import { DocumentHistory } from '../documents/document-history'
-import { useUser, useFirestore, useStorage } from '@/firebase'
-import { Progress } from '@/components/ui/progress'
-
 
 const formSchema = z.object({
-  contract: z.string(),
+  contract: z.string().min(20, { message: 'Please enter at least 20 characters of contract text.' }),
 });
 
 export function AnalysisForm() {
   const [analysisResult, setAnalysisResult] = React.useState<SummarizeContractAndIdentifyRisksOutput | null>(null)
   const [isLoading, setIsLoading] = React.useState(false)
-  const [uploadedFile, setUploadedFile] = React.useState<{name: string, dataUri: string, blobUrl: string} | null>(null)
-  const [isUploading, setIsUploading] = React.useState(false);
-  const [uploadProgress, setUploadProgress] = React.useState(0);
-
-  const fileInputRef = React.useRef<HTMLInputElement>(null)
   const { toast } = useToast()
-  const { user } = useUser()
-  const firestore = useFirestore()
-  const storage = useStorage()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -45,134 +30,13 @@ export function AnalysisForm() {
       contract: '',
     },
   })
-  
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return;
-
-    if (file.type !== 'application/pdf' && file.type !== 'text/plain') {
-        toast({
-            variant: 'destructive',
-            title: 'Unsupported File Type',
-            description: 'Please upload a .txt or .pdf file.',
-        });
-        return;
-    }
-
-    if (!user || !firestore || !storage) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Authentication or database service not available.' });
-      return;
-    }
-
-    setIsUploading(true);
-    setUploadProgress(0);
-
-    const storagePath = `users/${user.uid}/documents/${Date.now()}_${file.name}`;
-    const storageRef = ref(storage, storagePath);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on('state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setUploadProgress(progress);
-      },
-      (error) => {
-        console.error("Upload error:", error);
-        toast({ variant: 'destructive', title: 'Upload Failed', description: 'An error occurred during upload.' });
-        setIsUploading(false);
-      },
-      async () => {
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        
-        await addDoc(collection(firestore, 'users', user.uid, 'documents'), {
-          userId: user.uid,
-          filename: file.name,
-          contentType: file.type,
-          fileSize: file.size,
-          storagePath: storagePath,
-          downloadURL: downloadURL,
-          uploadDate: serverTimestamp(),
-        });
-        
-        setIsUploading(false);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = ''
-        }
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const dataUri = e.target?.result as string;
-            const blobUrl = URL.createObjectURL(file);
-            setUploadedFile({ name: file.name, dataUri, blobUrl });
-
-            if (file.type === 'text/plain') {
-                const textReader = new FileReader();
-                textReader.onload = (e) => {
-                    form.setValue('contract', e.target?.result as string);
-                }
-                textReader.readAsText(file);
-            } else {
-                 toast({
-                    title: 'File ready for analysis',
-                    description: `"${file.name}" will be sent to the AI. Its content will not be displayed here.`,
-                });
-            }
-        };
-        reader.readAsDataURL(file);
-        
-        toast({ title: 'Success', description: 'Document uploaded and ready to use.' });
-      }
-    );
-  }
-
-  const handleFileFromHistory = async (doc: {id: string, filename: string, downloadURL: string}) => {
-     try {
-      const response = await fetch(doc.downloadURL);
-      if (!response.ok) {
-        throw new Error('Failed to fetch file from storage.');
-      }
-      const blob = await response.blob();
-      
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUri = e.target?.result as string;
-        const blobUrl = URL.createObjectURL(blob);
-        setUploadedFile({ name: doc.filename, dataUri, blobUrl });
-      };
-      reader.readAsDataURL(blob);
-
-      toast({
-        title: 'Document Selected',
-        description: `Using "${doc.filename}" from your history as context.`
-      });
-
-    } catch (error) {
-      console.error('Error using file from history:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not load the selected document from history.',
-      });
-    }
-  }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
     setAnalysisResult(null)
     try {
-      if (!values.contract && !uploadedFile) {
-        toast({
-          variant: 'destructive',
-          title: 'Input Required',
-          description: 'Please provide contract text or upload a document.',
-        })
-        setIsLoading(false);
-        return;
-      }
-      
       const result = await summarizeContractAndIdentifyRisks({
         contractText: values.contract,
-        contractDataUri: uploadedFile?.dataUri,
       })
       setAnalysisResult(result)
     } catch (error) {
@@ -185,10 +49,6 @@ export function AnalysisForm() {
     } finally {
       setIsLoading(false)
     }
-  }
-  
-  const handleRemoveFile = () => {
-    setUploadedFile(null)
   }
 
   const handleDownload = () => {
@@ -215,148 +75,95 @@ ${analysisResult.riskReport}
   }
 
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-      <div className="lg:col-span-2 grid grid-cols-1 gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Analyze a Contract</CardTitle>
-            <CardDescription>
-              Paste contract text or upload a document to begin the analysis.
-            </CardDescription>
-          </CardHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
-              <CardContent>
-                <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="contract"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Contract Text</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Paste your contract text here."
-                            className="min-h-[400px] resize-y"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormItem>
-                    <FormLabel>Upload Document</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="file"
-                        accept=".txt,.pdf"
-                        onChange={handleFileChange}
-                        ref={fileInputRef}
-                        disabled={isUploading}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                       Upload a .txt or .pdf file for analysis. This will also save it to your Document History.
-                    </FormDescription>
-                  </FormItem>
-                  {isUploading && (
-                    <div className="space-y-2">
-                      <Progress value={uploadProgress} />
-                      <p className="text-sm text-muted-foreground">Uploading file...</p>
-                    </div>
+    <div className="grid grid-cols-1 gap-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>Analyze a Contract</CardTitle>
+          <CardDescription>
+            Paste contract text to begin the analysis.
+          </CardDescription>
+        </CardHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <CardContent>
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="contract"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contract Text</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Paste your contract text here."
+                          className="min-h-[400px] resize-y"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                  {uploadedFile && (
-                    <div className="flex items-center justify-between rounded-md border bg-muted/50 p-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Paperclip className="h-4 w-4" />
-                        <span className="truncate max-w-[200px]">{uploadedFile.name}</span>
-                      </div>
-                      <div className='flex items-center gap-1'>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => window.open(uploadedFile.blobUrl, '_blank')}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={handleRemoveFile}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-start">
-                <Button type="submit" disabled={isLoading || isUploading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Analyze
-                </Button>
-              </CardFooter>
-            </form>
-          </Form>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between">
-            <div>
-              <CardTitle>Analysis Report</CardTitle>
-              <CardDescription>
-                The AI-generated summary and risk report will appear here.
-              </CardDescription>
-            </div>
-            {analysisResult && (
-              <Button variant="outline" size="icon" onClick={handleDownload}>
-                <Download className="h-4 w-4" />
-                <span className="sr-only">Download Report</span>
+                />
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-start">
+              <Button type="submit" disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Analyze
               </Button>
-            )}
-          </CardHeader>
-          <CardContent>
-            {isLoading && (
-              <div className="flex h-full min-h-[400px] items-center justify-center">
-                <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
-              </div>
-            )}
-            {analysisResult ? (
-              <Accordion type="multiple" defaultValue={['summary', 'risk-report']} className="w-full">
-                <AccordionItem value="summary">
-                  <AccordionTrigger className="text-lg font-headline">Key Clause Summary</AccordionTrigger>
-                  <AccordionContent className="prose prose-sm dark:prose-invert max-w-none pt-2">
-                    <pre className="whitespace-pre-wrap font-sans text-sm">{analysisResult.summary}</pre>
-                  </AccordionContent>
-                </AccordionItem>
-                <AccordionItem value="risk-report">
-                  <AccordionTrigger className="text-lg font-headline">Risk & Revision Report</AccordionTrigger>
-                  <AccordionContent className="prose prose-sm dark:prose-invert max-w-none pt-2">
-                    <pre className="whitespace-pre-wrap font-sans text-sm">{analysisResult.riskReport}</pre>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            ) : (
-              !isLoading && (
-              <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border-2 border-dashed text-center">
-                  <Bot className="h-12 w-12 text-muted-foreground" />
-                  <p className="mt-4 text-muted-foreground">
-                    Your report is pending analysis.
-                  </p>
-              </div>
-              )
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </CardFooter>
+          </form>
+        </Form>
+      </Card>
 
-      <DocumentHistory onFileSelect={handleFileFromHistory} />
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between">
+          <div>
+            <CardTitle>Analysis Report</CardTitle>
+            <CardDescription>
+              The AI-generated summary and risk report will appear here.
+            </CardDescription>
+          </div>
+          {analysisResult && (
+            <Button variant="outline" size="icon" onClick={handleDownload}>
+              <Download className="h-4 w-4" />
+              <span className="sr-only">Download Report</span>
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          {isLoading && (
+            <div className="flex h-full min-h-[400px] items-center justify-center">
+              <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+            </div>
+          )}
+          {analysisResult ? (
+            <Accordion type="multiple" defaultValue={['summary', 'risk-report']} className="w-full">
+              <AccordionItem value="summary">
+                <AccordionTrigger className="text-lg font-headline">Key Clause Summary</AccordionTrigger>
+                <AccordionContent className="prose prose-sm dark:prose-invert max-w-none pt-2">
+                  <pre className="whitespace-pre-wrap font-sans text-sm">{analysisResult.summary}</pre>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="risk-report">
+                <AccordionTrigger className="text-lg font-headline">Risk & Revision Report</AccordionTrigger>
+                <AccordionContent className="prose prose-sm dark:prose-invert max-w-none pt-2">
+                  <pre className="whitespace-pre-wrap font-sans text-sm">{analysisResult.riskReport}</pre>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          ) : (
+            !isLoading && (
+            <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border-2 border-dashed text-center">
+                <Bot className="h-12 w-12 text-muted-foreground" />
+                <p className="mt-4 text-muted-foreground">
+                  Your report is pending analysis.
+                </p>
+            </div>
+            )
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
-
-    
