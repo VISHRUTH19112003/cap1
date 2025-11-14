@@ -2,8 +2,8 @@
 'use client'
 
 import * as React from 'react';
-import { useUser, useFirestore, useStorage } from '@/firebase';
-import { collection, query, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { useUser, useFirestore, useStorage, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { collection, query, onSnapshot, doc, serverTimestamp, where } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -46,7 +46,7 @@ export function DocumentManager() {
     if (!user || !firestore) return;
 
     setIsLoadingDocs(true);
-    const docsQuery = query(collection(firestore, `users/${user.uid}/documents`));
+    const docsQuery = query(collection(firestore, 'documents'), where('userId', '==', user.uid));
     const unsubscribe = onSnapshot(docsQuery, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Document));
       setDocuments(docs);
@@ -87,7 +87,8 @@ export function DocumentManager() {
       },
       async () => {
         const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        await addDoc(collection(firestore, `users/${user.uid}/documents`), {
+        
+        addDocumentNonBlocking(collection(firestore, 'documents'), {
           userId: user.uid,
           filename: file.name,
           contentType: file.type,
@@ -110,12 +111,12 @@ export function DocumentManager() {
       return;
     }
 
-    const docRef = doc(firestore, `users/${user.uid}/documents`, docToDelete.id);
+    const docRef = doc(firestore, 'documents', docToDelete.id);
     const storageRef = ref(storage, docToDelete.storagePath);
 
     try {
       await deleteObject(storageRef);
-      await deleteDoc(docRef);
+      deleteDocumentNonBlocking(docRef);
       toast({ title: 'Success', description: `${docToDelete.filename} has been deleted.` });
     } catch (error) {
       console.error("Delete error:", error);
