@@ -70,12 +70,25 @@ export function ArgumentForm() {
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      const dataUri = e.target?.result;
-      if (typeof dataUri === 'string') {
-        setUploadedFile({ name: file.name, dataUri });
+      const dataUri = e.target?.result as string;
+      setUploadedFile({ name: file.name, dataUri });
+      
+      if (file.type === 'text/plain') {
+        const textReader = new FileReader();
+        textReader.onload = (e) => {
+          const text = e.target?.result as string;
+          form.setValue('prompt', text);
+          toast({
+            title: 'File Content Loaded',
+            description: `${file.name} content has been loaded into the text area.`,
+          });
+        }
+        textReader.readAsText(file);
+      } else {
+        form.setValue('prompt', ''); // Clear textarea for non-text files
         toast({
           title: 'File Ready for Context',
-          description: `${file.name} will be used for context when generating the argument.`,
+          description: `${file.name} is ready. Its content won't be displayed but will be used by the AI.`,
         });
       }
     };
@@ -121,7 +134,7 @@ export function ArgumentForm() {
                   name="prompt"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Legal Prompt (Optional)</FormLabel>
+                      <FormLabel>Legal Prompt</FormLabel>
                       <FormControl>
                         <Textarea
                           placeholder="e.g., Argue for bail in a case of alleged theft where the evidence is purely circumstantial..."
@@ -139,6 +152,7 @@ export function ArgumentForm() {
                     <span className="flex-1 font-medium truncate">{uploadedFile.name}</span>
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
                         setUploadedFile(null);
+                        form.setValue('prompt', '');
                         if(fileInputRef.current) fileInputRef.current.value = '';
                     }}>
                         <span className="sr-only">Remove file</span>

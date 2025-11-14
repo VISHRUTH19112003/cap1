@@ -19,9 +19,6 @@ import { Input } from '@/components/ui/input'
 
 const formSchema = z.object({
   contract: z.string().optional(),
-}).refine(data => !!data.contract, {
-    message: 'Contract text must be provided if no file is uploaded.',
-    path: ['contract'],
 });
 
 export function AnalysisForm() {
@@ -98,12 +95,25 @@ ${analysisResult.riskReport}
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      const dataUri = e.target?.result;
-      if (typeof dataUri === 'string') {
-        setUploadedFile({ name: file.name, dataUri });
+      const dataUri = e.target?.result as string;
+      setUploadedFile({ name: file.name, dataUri });
+      
+      if (file.type === 'text/plain') {
+        const textReader = new FileReader();
+        textReader.onload = (e) => {
+          const text = e.target?.result as string;
+          form.setValue('contract', text);
+          toast({
+            title: 'File Content Loaded',
+            description: `${file.name} content has been loaded into the text area.`,
+          });
+        }
+        textReader.readAsText(file);
+      } else {
+        form.setValue('contract', ''); // Clear textarea for non-text files
         toast({
-          title: 'File Ready',
-          description: `${file.name} is ready to be analyzed.`,
+          title: 'File Ready for Analysis',
+          description: `${file.name} is ready. Its content won't be displayed but will be used by the AI.`,
         });
       }
     };
@@ -136,7 +146,7 @@ ${analysisResult.riskReport}
                   name="contract"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contract Text (Optional)</FormLabel>
+                      <FormLabel>Contract Text</FormLabel>
                       <FormControl>
                         <Textarea
                           placeholder="Paste your contract text here, or upload a document below."
@@ -154,6 +164,7 @@ ${analysisResult.riskReport}
                     <span className="flex-1 font-medium truncate">{uploadedFile.name}</span>
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
                         setUploadedFile(null);
+                        form.setValue('contract', '');
                         if(fileInputRef.current) fileInputRef.current.value = '';
                     }}>
                         <span className="sr-only">Remove file</span>
