@@ -110,7 +110,7 @@ ${analysisResult.riskReport}
         }
         textReader.readAsText(file);
       } else {
-        form.setValue('contract', ''); // Clear textarea for non-text files
+        form.setValue('contract', ''); 
         toast({
           title: 'File Ready for Analysis',
           description: `${file.name} is ready. Its content won't be displayed but will be used by the AI.`,
@@ -127,6 +127,7 @@ ${analysisResult.riskReport}
     reader.readAsDataURL(file);
   };
 
+  const showFileChip = uploadedFile && form.getValues('contract') === '';
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
@@ -158,7 +159,7 @@ ${analysisResult.riskReport}
                     </FormItem>
                   )}
                 />
-                 {uploadedFile && (
+                 {showFileChip && (
                   <div className="flex items-center gap-2 rounded-md border border-dashed p-3 text-sm">
                     <FileIcon className="h-4 w-4 text-muted-foreground" />
                     <span className="flex-1 font-medium truncate">{uploadedFile.name}</span>

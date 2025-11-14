@@ -74,7 +74,6 @@ export function ArgumentForm() {
       setUploadedFile({ name: file.name, dataUri });
       
       if (file.type === 'text/plain') {
-        // For text files, read the content and set it in the textarea
         const textReader = new FileReader();
         textReader.onload = (e) => {
           const text = e.target?.result as string;
@@ -86,8 +85,7 @@ export function ArgumentForm() {
         }
         textReader.readAsText(file);
       } else {
-        // For other files, clear the textarea and inform the user
-        form.setValue('prompt', ''); 
+        form.setValue('prompt', '');
         toast({
           title: 'File Ready for Context',
           description: `${file.name} is ready. Its content won't be displayed but will be used by the AI.`,
@@ -118,6 +116,7 @@ export function ArgumentForm() {
     URL.revokeObjectURL(url)
   }
 
+  const showFileChip = uploadedFile && form.getValues('prompt') === '';
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
@@ -148,7 +147,7 @@ export function ArgumentForm() {
                     </FormItem>
                   )}
                 />
-                 {uploadedFile && (
+                 {showFileChip && (
                   <div className="flex items-center gap-2 rounded-md border border-dashed p-3 text-sm">
                     <FileIcon className="h-4 w-4 text-muted-foreground" />
                     <span className="flex-1 font-medium truncate">{uploadedFile.name}</span>
