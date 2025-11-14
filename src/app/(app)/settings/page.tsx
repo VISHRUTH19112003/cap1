@@ -4,12 +4,12 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { updateProfile, updateEmail, deleteUser } from "firebase/auth"
+import { updateProfile, updateEmail, deleteUser, signOut } from "firebase/auth"
 import * as React from "react"
 import { Loader2, Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 
-import { useAuth, useUser, signOut } from '@/firebase'
+import { useAuth, useUser } from '@/firebase'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import {
@@ -259,7 +259,7 @@ export default function SettingsPage() {
                       <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                       <AlertDialogDescription>
                         This action cannot be undone. This will permanently delete your account and remove your data from our servers.
-                      </Aler tDialogDescription>
+                      </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
