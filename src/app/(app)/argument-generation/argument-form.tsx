@@ -4,7 +4,7 @@
 import * as React from 'react'
 import { generateLegalArgument } from '@/ai/flows/generate-legal-argument'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Bot, Loader2, Sparkles, Upload, Download } from 'lucide-react'
+import { Bot, Loader2, Sparkles, Upload, Download, File as FileIcon } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -18,14 +18,13 @@ import { Input } from '@/components/ui/input'
 
 
 const formSchema = z.object({
-  prompt: z.string().min(20, {
-    message: 'Prompt must be at least 20 characters.',
-  }),
-})
+  prompt: z.string().optional(),
+});
 
 export function ArgumentForm() {
   const [generatedArgument, setGeneratedArgument] = React.useState<string | null>(null)
   const [isLoading, setIsLoading] = React.useState(false)
+  const [uploadedFile, setUploadedFile] = React.useState<{name: string, dataUri: string} | null>(null);
   const { toast } = useToast()
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   
@@ -37,10 +36,21 @@ export function ArgumentForm() {
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+     if (!values.prompt && !uploadedFile) {
+        toast({
+            variant: 'destructive',
+            title: 'Input Missing',
+            description: 'Please either enter a prompt or upload a document for context.',
+        });
+        return;
+    }
     setIsLoading(true)
     setGeneratedArgument(null)
     try {
-      const result = await generateLegalArgument(values.prompt)
+      const result = await generateLegalArgument({
+        prompt: values.prompt,
+        contextDataUri: uploadedFile?.dataUri,
+      })
       setGeneratedArgument(result)
     } catch (error) {
       console.error('Error generating argument:', error)
@@ -58,24 +68,14 @@ export function ArgumentForm() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.type !== 'text/plain') {
-        toast({
-            variant: 'destructive',
-            title: 'Unsupported File Type',
-            description: 'PDF support is coming soon. For now, please use .txt files.',
-        });
-        return;
-    }
-
     const reader = new FileReader();
     reader.onload = (e) => {
-      const text = e.target?.result;
-      if (typeof text === 'string') {
-        const currentPrompt = form.getValues('prompt');
-        form.setValue('prompt', `${currentPrompt}\\n\\n--- Document Content ---\\n${text}`);
+      const dataUri = e.target?.result;
+      if (typeof dataUri === 'string') {
+        setUploadedFile({ name: file.name, dataUri });
         toast({
-          title: 'File Content Appended',
-          description: `${file.name} content has been appended to the prompt.`,
+          title: 'File Ready for Context',
+          description: `${file.name} will be used for context when generating the argument.`,
         });
       }
     };
@@ -86,7 +86,7 @@ export function ArgumentForm() {
             description: 'Could not read the selected file.',
         });
     }
-    reader.readAsText(file);
+    reader.readAsDataURL(file);
   };
   
   const handleDownload = () => {
@@ -121,7 +121,7 @@ export function ArgumentForm() {
                   name="prompt"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Legal Prompt</FormLabel>
+                      <FormLabel>Legal Prompt (Optional)</FormLabel>
                       <FormControl>
                         <Textarea
                           placeholder="e.g., Argue for bail in a case of alleged theft where the evidence is purely circumstantial..."
@@ -133,6 +133,19 @@ export function ArgumentForm() {
                     </FormItem>
                   )}
                 />
+                 {uploadedFile && (
+                  <div className="flex items-center gap-2 rounded-md border border-dashed p-3 text-sm">
+                    <FileIcon className="h-4 w-4 text-muted-foreground" />
+                    <span className="flex-1 font-medium truncate">{uploadedFile.name}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+                        setUploadedFile(null);
+                        if(fileInputRef.current) fileInputRef.current.value = '';
+                    }}>
+                        <span className="sr-only">Remove file</span>
+                        &times;
+                    </Button>
+                  </div>
+                )}
                  <Input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".txt,.pdf,.doc,.docx" />
               </CardContent>
               <CardFooter className="flex justify-between">
