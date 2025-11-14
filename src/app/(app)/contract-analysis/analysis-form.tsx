@@ -78,7 +78,7 @@ ${analysisResult.summary}
 ${analysisResult.riskReport}
     `
 
-    const blob = new Blob([reportContent.trim()], { type: 'text/plain;charset=utf-t' })
+    const blob = new Blob([reportContent.trim()], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -105,7 +105,7 @@ ${analysisResult.riskReport}
           form.setValue('contract', text);
           toast({
             title: 'File Content Loaded',
-            description: `${file.name} content has been loaded into the text area.`,
+            description: `Content from ${file.name} has been loaded into the text area.`,
           });
         }
         textReader.readAsText(file);

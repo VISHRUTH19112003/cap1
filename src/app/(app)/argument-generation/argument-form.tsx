@@ -74,18 +74,20 @@ export function ArgumentForm() {
       setUploadedFile({ name: file.name, dataUri });
       
       if (file.type === 'text/plain') {
+        // For text files, read the content and set it in the textarea
         const textReader = new FileReader();
         textReader.onload = (e) => {
           const text = e.target?.result as string;
           form.setValue('prompt', text);
           toast({
             title: 'File Content Loaded',
-            description: `${file.name} content has been loaded into the text area.`,
+            description: `Content from ${file.name} has been loaded into the prompt area.`,
           });
         }
         textReader.readAsText(file);
       } else {
-        form.setValue('prompt', ''); // Clear textarea for non-text files
+        // For other files, clear the textarea and inform the user
+        form.setValue('prompt', ''); 
         toast({
           title: 'File Ready for Context',
           description: `${file.name} is ready. Its content won't be displayed but will be used by the AI.`,
@@ -105,7 +107,7 @@ export function ArgumentForm() {
   const handleDownload = () => {
     if (!generatedArgument) return
 
-    const blob = new Blob([generatedArgument], { type: 'text/plain;charset=utf-t' })
+    const blob = new Blob([generatedArgument], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
