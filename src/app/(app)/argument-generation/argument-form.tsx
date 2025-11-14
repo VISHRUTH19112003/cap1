@@ -10,21 +10,21 @@ import { z } from 'zod'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { DocumentHistory } from '../documents/document-history'
 
 const formSchema = z.object({
-  prompt: z.string().min(10, { message: 'Please enter a prompt of at least 10 characters.' }),
+  prompt: z.string(),
 });
 
 export function ArgumentForm() {
   const [generatedArgument, setGeneratedArgument] = React.useState<string | null>(null)
   const [isLoading, setIsLoading] = React.useState(false)
-  const [uploadedFile, setUploadedFile] = React.useState<File | null>(null)
-  const [dataUri, setDataUri] = React.useState<string | null>(null)
+  const [uploadedFile, setUploadedFile] = React.useState<{name: string, dataUri: string, blobUrl: string} | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const { toast } = useToast()
   
@@ -37,38 +37,64 @@ export function ArgumentForm() {
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (!file) return
+    if (!file) return;
 
-    setUploadedFile(file)
-
-    if (file.type === 'text/plain') {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const text = e.target?.result as string
-        form.setValue('prompt', text)
-      }
-      reader.readAsText(file)
-    } else {
-       toast({
-          title: 'File ready for analysis',
-          description: `"${file.name}" will be sent to the AI for processing. Its content will not be displayed in the text area.`,
+    if (file.type !== 'application/pdf' && file.type !== 'text/plain') {
+        toast({
+            variant: 'destructive',
+            title: 'Unsupported File Type',
+            description: 'Please upload a .txt or .pdf file.',
         });
+        return;
     }
 
-    const readerForDataUri = new FileReader()
-    readerForDataUri.onload = (e) => {
-      setDataUri(e.target?.result as string)
-    }
-    readerForDataUri.readAsDataURL(file)
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const dataUri = e.target?.result as string;
+        const blobUrl = URL.createObjectURL(file);
+        setUploadedFile({ name: file.name, dataUri, blobUrl });
+
+        if (file.type === 'text/plain') {
+            const textReader = new FileReader();
+            textReader.onload = (e) => {
+                form.setValue('prompt', e.target?.result as string);
+            }
+            textReader.readAsText(file);
+        } else {
+             toast({
+                title: 'File ready for analysis',
+                description: `"${file.name}" will be sent to the AI. Its content will not be displayed here.`,
+            });
+        }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  const handleFileFromHistory = ({name, dataUri}: {name: string, dataUri: string}) => {
+     const blobUrl = dataUri; // For viewing, data URI works fine
+     setUploadedFile({name, dataUri, blobUrl});
+      toast({
+        title: 'Document Selected',
+        description: `Using "${name}" from your history as context.`
+      });
   }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
     setGeneratedArgument(null)
     try {
+      if (!values.prompt && !uploadedFile) {
+        toast({
+          variant: 'destructive',
+          title: 'Input Required',
+          description: 'Please provide a prompt or upload a document.',
+        })
+        return;
+      }
+
       const result = await generateLegalArgument({
         prompt: values.prompt,
-        contextDataUri: dataUri || undefined,
+        contextDataUri: uploadedFile?.dataUri,
       })
       setGeneratedArgument(result)
     } catch (error) {
@@ -85,7 +111,6 @@ export function ArgumentForm() {
 
   const handleRemoveFile = () => {
     setUploadedFile(null)
-    setDataUri(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -106,7 +131,8 @@ export function ArgumentForm() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+      <div className="lg:col-span-2 grid grid-cols-1 gap-8">
         <Card>
           <CardHeader>
             <CardTitle>Generate Legal Argument</CardTitle>
@@ -159,7 +185,7 @@ export function ArgumentForm() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        onClick={() => window.open(URL.createObjectURL(uploadedFile), '_blank')}
+                        onClick={() => window.open(uploadedFile.blobUrl, '_blank')}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
@@ -188,46 +214,49 @@ export function ArgumentForm() {
             </form>
           </Form>
         </Card>
-      
-      <Card className="flex flex-col">
-        <CardHeader className="flex flex-row items-start justify-between">
-          <div>
-            <CardTitle>Generated Argument</CardTitle>
-            <CardDescription>
-              The AI-generated legal argument will appear below.
-            </CardDescription>
-          </div>
-           {generatedArgument && (
-            <Button variant="outline" size="icon" onClick={handleDownload}>
-              <Download className="h-4 w-4" />
-              <span className="sr-only">Download Argument</span>
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent className="flex-1">
-          {isLoading && (
-            <div className="flex h-full items-center justify-center min-h-[300px]">
-              <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+
+        <Card className="flex flex-col">
+          <CardHeader className="flex flex-row items-start justify-between">
+            <div>
+              <CardTitle>Generated Argument</CardTitle>
+              <CardDescription>
+                The AI-generated legal argument will appear below.
+              </CardDescription>
             </div>
-          )}
-          {generatedArgument ? (
-            <ScrollArea className="h-full max-h-[400px]">
-              <div className="prose prose-sm dark:prose-invert max-w-none rounded-md border bg-muted/30 p-4">
-                <pre className="whitespace-pre-wrap font-sans">{generatedArgument}</pre>
+            {generatedArgument && (
+              <Button variant="outline" size="icon" onClick={handleDownload}>
+                <Download className="h-4 w-4" />
+                <span className="sr-only">Download Argument</span>
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent className="flex-1">
+            {isLoading && (
+              <div className="flex h-full items-center justify-center min-h-[300px]">
+                <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
               </div>
-            </ScrollArea>
-          ) : (
-            !isLoading && (
-            <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-lg border-2 border-dashed text-center">
-                <Bot className="h-12 w-12 text-muted-foreground" />
-                <p className="mt-4 text-muted-foreground">
-                  Your argument awaits generation.
-                </p>
-            </div>
-            )
-          )}
-        </CardContent>
-      </Card>
+            )}
+            {generatedArgument ? (
+              <ScrollArea className="h-full max-h-[400px]">
+                <div className="prose prose-sm dark:prose-invert max-w-none rounded-md border bg-muted/30 p-4">
+                  <pre className="whitespace-pre-wrap font-sans">{generatedArgument}</pre>
+                </div>
+              </ScrollArea>
+            ) : (
+              !isLoading && (
+              <div className="flex h-full min-h-[300px] flex-col items-center justify-center rounded-lg border-2 border-dashed text-center">
+                  <Bot className="h-12 w-12 text-muted-foreground" />
+                  <p className="mt-4 text-muted-foreground">
+                    Your argument awaits generation.
+                  </p>
+              </div>
+              )
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <DocumentHistory onFileSelect={handleFileFromHistory} />
     </div>
   )
 }

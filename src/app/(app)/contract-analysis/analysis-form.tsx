@@ -15,16 +15,16 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
+import { DocumentHistory } from '../documents/document-history'
 
 const formSchema = z.object({
-  contract: z.string().min(10, { message: 'Contract text must be at least 10 characters.' }),
+  contract: z.string(),
 });
 
 export function AnalysisForm() {
   const [analysisResult, setAnalysisResult] = React.useState<SummarizeContractAndIdentifyRisksOutput | null>(null)
   const [isLoading, setIsLoading] = React.useState(false)
-  const [uploadedFile, setUploadedFile] = React.useState<File | null>(null)
-  const [dataUri, setDataUri] = React.useState<string | null>(null)
+  const [uploadedFile, setUploadedFile] = React.useState<{name: string, dataUri: string, blobUrl: string} | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const { toast } = useToast()
@@ -38,38 +38,64 @@ export function AnalysisForm() {
   
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (!file) return
+    if (!file) return;
 
-    setUploadedFile(file)
-
-    if (file.type === 'text/plain') {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const text = e.target?.result as string
-        form.setValue('contract', text)
-      }
-      reader.readAsText(file)
-    } else {
-       toast({
-          title: 'File ready for analysis',
-          description: `"${file.name}" will be sent to the AI for processing. Its content will not be displayed in the text area.`,
+    if (file.type !== 'application/pdf' && file.type !== 'text/plain') {
+        toast({
+            variant: 'destructive',
+            title: 'Unsupported File Type',
+            description: 'Please upload a .txt or .pdf file.',
         });
+        return;
     }
 
-    const readerForDataUri = new FileReader()
-    readerForDataUri.onload = (e) => {
-      setDataUri(e.target?.result as string)
-    }
-    readerForDataUri.readAsDataURL(file)
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const dataUri = e.target?.result as string;
+        const blobUrl = URL.createObjectURL(file);
+        setUploadedFile({ name: file.name, dataUri, blobUrl });
+
+        if (file.type === 'text/plain') {
+            const textReader = new FileReader();
+            textReader.onload = (e) => {
+                form.setValue('contract', e.target?.result as string);
+            }
+            textReader.readAsText(file);
+        } else {
+             toast({
+                title: 'File ready for analysis',
+                description: `"${file.name}" will be sent to the AI. Its content will not be displayed here.`,
+            });
+        }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  const handleFileFromHistory = ({name, dataUri}: {name: string, dataUri: string}) => {
+     const blobUrl = dataUri; // For viewing, data URI works fine
+     setUploadedFile({name, dataUri, blobUrl});
+      toast({
+        title: 'Document Selected',
+        description: `Using "${name}" from your history as context.`
+      });
   }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
     setAnalysisResult(null)
     try {
+      if (!values.contract && !uploadedFile) {
+        toast({
+          variant: 'destructive',
+          title: 'Input Required',
+          description: 'Please provide contract text or upload a document.',
+        })
+        return;
+      }
+      
       const result = await summarizeContractAndIdentifyRisks({
         contractText: values.contract,
-        contractDataUri: dataUri || undefined,
+        contractDataUri: uploadedFile?.dataUri,
       })
       setAnalysisResult(result)
     } catch (error) {
@@ -86,7 +112,6 @@ export function AnalysisForm() {
   
   const handleRemoveFile = () => {
     setUploadedFile(null)
-    setDataUri(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -116,135 +141,139 @@ ${analysisResult.riskReport}
   }
 
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle>Analyze a Contract</CardTitle>
-          <CardDescription>
-            Paste contract text or upload a document to begin the analysis.
-          </CardDescription>
-        </CardHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <CardContent>
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="contract"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Contract Text</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Paste your contract text here."
-                          className="min-h-[400px] resize-y"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormItem>
-                  <FormLabel>Upload Document (Optional)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="file"
-                      accept=".txt,.pdf"
-                      onChange={handleFileChange}
-                      ref={fileInputRef}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Upload a .txt or .pdf file for analysis.
-                  </FormDescription>
-                </FormItem>
-                {uploadedFile && (
-                  <div className="flex items-center justify-between rounded-md border bg-muted/50 p-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Paperclip className="h-4 w-4" />
-                      <span className="truncate max-w-[200px]">{uploadedFile.name}</span>
-                    </div>
-                     <div className='flex items-center gap-1'>
-                       <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => window.open(URL.createObjectURL(uploadedFile), '_blank')}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleRemoveFile}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-start">
-              <Button type="submit" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Analyze
-              </Button>
-            </CardFooter>
-          </form>
-        </Form>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-start justify-between">
-          <div>
-            <CardTitle>Analysis Report</CardTitle>
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+      <div className="lg:col-span-2 grid grid-cols-1 gap-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Analyze a Contract</CardTitle>
             <CardDescription>
-              The AI-generated summary and risk report will appear here.
+              Paste contract text or upload a document to begin the analysis.
             </CardDescription>
-          </div>
-          {analysisResult && (
-            <Button variant="outline" size="icon" onClick={handleDownload}>
-              <Download className="h-4 w-4" />
-              <span className="sr-only">Download Report</span>
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent>
-          {isLoading && (
-            <div className="flex h-full min-h-[400px] items-center justify-center">
-              <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+          </CardHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <CardContent>
+                <div className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="contract"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Contract Text</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Paste your contract text here."
+                            className="min-h-[400px] resize-y"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormItem>
+                    <FormLabel>Upload Document (Optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="file"
+                        accept=".txt,.pdf"
+                        onChange={handleFileChange}
+                        ref={fileInputRef}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Upload a .txt or .pdf file for analysis.
+                    </FormDescription>
+                  </FormItem>
+                  {uploadedFile && (
+                    <div className="flex items-center justify-between rounded-md border bg-muted/50 p-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Paperclip className="h-4 w-4" />
+                        <span className="truncate max-w-[200px]">{uploadedFile.name}</span>
+                      </div>
+                      <div className='flex items-center gap-1'>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => window.open(uploadedFile.blobUrl, '_blank')}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={handleRemoveFile}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+              <CardFooter className="flex justify-start">
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Analyze
+                </Button>
+              </CardFooter>
+            </form>
+          </Form>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between">
+            <div>
+              <CardTitle>Analysis Report</CardTitle>
+              <CardDescription>
+                The AI-generated summary and risk report will appear here.
+              </CardDescription>
             </div>
-          )}
-          {analysisResult ? (
-            <Accordion type="multiple" defaultValue={['summary', 'risk-report']} className="w-full">
-              <AccordionItem value="summary">
-                <AccordionTrigger className="text-lg font-headline">Key Clause Summary</AccordionTrigger>
-                <AccordionContent className="prose prose-sm dark:prose-invert max-w-none pt-2">
-                  <pre className="whitespace-pre-wrap font-sans text-sm">{analysisResult.summary}</pre>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="risk-report">
-                <AccordionTrigger className="text-lg font-headline">Risk & Revision Report</AccordionTrigger>
-                <AccordionContent className="prose prose-sm dark:prose-invert max-w-none pt-2">
-                   <pre className="whitespace-pre-wrap font-sans text-sm">{analysisResult.riskReport}</pre>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          ) : (
-            !isLoading && (
-            <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border-2 border-dashed text-center">
-                <Bot className="h-12 w-12 text-muted-foreground" />
-                <p className="mt-4 text-muted-foreground">
-                  Your report is pending analysis.
-                </p>
-            </div>
-            )
-          )}
-        </CardContent>
-      </Card>
+            {analysisResult && (
+              <Button variant="outline" size="icon" onClick={handleDownload}>
+                <Download className="h-4 w-4" />
+                <span className="sr-only">Download Report</span>
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent>
+            {isLoading && (
+              <div className="flex h-full min-h-[400px] items-center justify-center">
+                <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            {analysisResult ? (
+              <Accordion type="multiple" defaultValue={['summary', 'risk-report']} className="w-full">
+                <AccordionItem value="summary">
+                  <AccordionTrigger className="text-lg font-headline">Key Clause Summary</AccordionTrigger>
+                  <AccordionContent className="prose prose-sm dark:prose-invert max-w-none pt-2">
+                    <pre className="whitespace-pre-wrap font-sans text-sm">{analysisResult.summary}</pre>
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="risk-report">
+                  <AccordionTrigger className="text-lg font-headline">Risk & Revision Report</AccordionTrigger>
+                  <AccordionContent className="prose prose-sm dark:prose-invert max-w-none pt-2">
+                    <pre className="whitespace-pre-wrap font-sans text-sm">{analysisResult.riskReport}</pre>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            ) : (
+              !isLoading && (
+              <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border-2 border-dashed text-center">
+                  <Bot className="h-12 w-12 text-muted-foreground" />
+                  <p className="mt-4 text-muted-foreground">
+                    Your report is pending analysis.
+                  </p>
+              </div>
+              )
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <DocumentHistory onFileSelect={handleFileFromHistory} />
     </div>
   )
 }
