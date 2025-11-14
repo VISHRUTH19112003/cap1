@@ -49,35 +49,23 @@ service cloud.firestore {
       allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(userId);
-    }
 
-    /**
-     * @description Controls access to user documents.
-     * @path /users/{userId}/documents/{documentId}
-     * @allow (create) - Authenticated user can create a document under their userId if the document's userId matches the path.
-     * @allow (get, list, update, delete) - Authenticated user can get, list, update, and delete their own documents if the document's userId matches their auth UID.
-     * @deny (create) - User cannot create a document with a userId that does not match their auth UID.
-     * @deny (update, delete) - User cannot update or delete another user's document.
-     * @principle Enforces document ownership for writes, restricts access to a user's own data tree, and validates relational integrity between documents.
-     */
-    match /users/{userId}/documents/{documentId} {
-      function isSignedIn() {
-        return request.auth != null;
+      /**
+       * @description Controls access to user documents.
+       * @path /users/{userId}/documents/{documentId}
+       * @allow (create) - Authenticated user can create a document under their userId if the document's userId matches the path.
+       * @allow (get, list, update, delete) - Authenticated user can get, list, update, and delete their own documents if the document's userId matches their auth UID.
+       * @deny (create) - User cannot create a document with a userId that does not match their auth UID.
+       * @deny (update, delete) - User cannot update or delete another user's document.
+       * @principle Enforces document ownership for writes, restricts access to a user's own data tree, and validates relational integrity between documents.
+       */
+      match /documents/{documentId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId);
+        allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isExistingOwner(userId);
       }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-      allow delete: if isExistingOwner(userId);
     }
 
     /**
