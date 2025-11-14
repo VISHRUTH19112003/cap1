@@ -3,34 +3,21 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useIsClient } from 'usehooks-ts'
-import { Loader2, Settings } from 'lucide-react'
+import { Settings } from 'lucide-react'
 
-import { useUser } from '@/firebase'
 import { cn } from '@/lib/utils'
 import { Icons } from '@/components/icons'
 import { MainNav } from '@/components/main-nav'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
+import { UserNav } from '@/components/user-nav'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isClient = useIsClient()
-  const { user, isUserLoading } = useUser()
-  const router = useRouter()
 
-  React.useEffect(() => {
-    if (isClient && !isUserLoading && (!user || !user.emailVerified)) {
-      router.push('/login')
-    }
-  }, [isClient, isUserLoading, user, router])
-
-  if (!isClient || isUserLoading || !user || !user.emailVerified) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-16 w-16 animate-spin" />
-      </div>
-    )
+  if (!isClient) {
+    return null
   }
 
   return (
@@ -57,6 +44,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <p>Settings</p>
               </TooltipContent>
             </Tooltip>
+            <UserNav />
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
