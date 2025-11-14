@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A Genkit flow for performing legal research, analysis, and answering questions.
@@ -19,7 +20,7 @@ const FilterSchema = z.object({
 });
 
 const LegalResearchAndAnalysisInputSchema = z.object({
-  query: z.string().describe("The user's natural language search query, which may be a question."),
+  query: z.string().describe("The user's natural language search query, which may be a question or a specific case number."),
   filters: FilterSchema.describe('Filters to apply to the search.'),
 });
 export type LegalResearchAndAnalysisInput = z.infer<typeof LegalResearchAndAnalysisInputSchema>;
@@ -46,8 +47,10 @@ const prompt = ai.definePrompt({
   output: { schema: LegalResearchAndAnalysisOutputSchema },
   prompt: `You are an expert legal researcher and analyst. Your task is to act as a proxy for the Indian Kanoon search engine and an expert paralegal.
 
-1.  **Analyze the User's Query**: Understand the user's question and the legal concepts involved.
-2.  **Find the Most Relevant Document**: Simulate a search on Indian Kanoon to find the single most relevant, up-to-date legal document (case, statute, etc.) that can answer the query.
+1.  **Analyze the User's Query**: First, determine if the user's query is a specific case number/citation or a general question.
+2.  **Find the Most Relevant Document**:
+    *   **If the query is a case number**, you MUST find that exact case. Do not return a different case.
+    *   **If the query is a general question**, simulate a search on Indian Kanoon to find the single most relevant, up-to-date legal document (case, statute, etc.) that can answer the query.
 3.  **Summarize the Document**: Provide a comprehensive summary of the key points of the document you found.
 4.  **Answer the Question**: Directly answer the user's original query based on the content of the document.
 5.  **Provide a Source URL**: Generate a plausible Indian Kanoon URL for the document you've "found".
