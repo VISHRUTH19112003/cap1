@@ -4,9 +4,10 @@
 import * as React from 'react'
 import { generateLegalArgument } from '@/ai/flows/generate-legal-argument'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Bot, Loader2, Sparkles, Upload, Download, File as FileIcon } from 'lucide-react'
+import { Bot, Loader2, Sparkles, Upload, Download, File as FileIcon, X, Eye } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
+import Link from 'next/link'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -116,7 +117,11 @@ export function ArgumentForm() {
     URL.revokeObjectURL(url)
   }
 
-  const showFileChip = uploadedFile && form.getValues('prompt') === '';
+  const handleRemoveFile = () => {
+    setUploadedFile(null);
+    form.setValue('prompt', '');
+    if(fileInputRef.current) fileInputRef.current.value = '';
+  }
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
@@ -147,17 +152,19 @@ export function ArgumentForm() {
                     </FormItem>
                   )}
                 />
-                 {showFileChip && (
+                 {uploadedFile && (
                   <div className="flex items-center gap-2 rounded-md border border-dashed p-3 text-sm">
-                    <FileIcon className="h-4 w-4 text-muted-foreground" />
-                    <span className="flex-1 font-medium truncate">{uploadedFile.name}</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
-                        setUploadedFile(null);
-                        form.setValue('prompt', '');
-                        if(fileInputRef.current) fileInputRef.current.value = '';
-                    }}>
+                    <FileIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="flex-1 font-medium truncate" title={uploadedFile.name}>{uploadedFile.name}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
+                      <Link href={uploadedFile.dataUri} target="_blank" rel="noopener noreferrer">
+                         <Eye />
+                         <span className="sr-only">View File</span>
+                      </Link>
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleRemoveFile}>
+                        <X/>
                         <span className="sr-only">Remove file</span>
-                        &times;
                     </Button>
                   </div>
                 )}
