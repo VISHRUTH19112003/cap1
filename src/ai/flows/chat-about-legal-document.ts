@@ -1,10 +1,11 @@
+
 'use server';
 /**
  * @fileOverview A Genkit flow for chatting about a legal document.
  *
  * - chatAboutLegalDocument - A function that takes a document context and a question and returns an answer.
  * - ChatAboutLegalDocumentInput - The input type for the chatAboutLegalDocument function.
- * - ChatAboutLegalDocumentOutput - The return type for the chatAboutLegalDocument function.
+ * - ChatAboutLegalDocumentOutput - The return type for the chatAboutLegal-document function.
  */
 
 import { ai } from '@/ai/genkit';
@@ -32,14 +33,20 @@ const prompt = ai.definePrompt({
   name: 'chatAboutLegalDocumentPrompt',
   input: { schema: ChatAboutLegalDocumentInputSchema },
   output: { schema: ChatAboutLegalDocumentOutputSchema },
-  prompt: `You are a helpful legal assistant. The user is asking a question about a specific legal document. Use the provided title and summary to answer their question.
+  prompt: `You are a helpful and friendly legal assistant. You are chatting with a user about a specific legal document.
+
+First, use the provided title and summary to answer their question about the document.
+
+If the user's question is not about the document (e.g., a greeting like "hi" or a general question), then answer it as a general conversational AI.
+
+If a document-related question cannot be answered from the provided context, say that the information is not in the document, but try to provide a helpful, general response if possible.
 
 Document Title: {{{title}}}
 Document Summary: {{{summary}}}
 
 User's Question: {{{question}}}
 
-Answer the question concisely based on the provided context. If the answer cannot be found in the context, say "I cannot answer that based on the provided information."`,
+Your Answer:`,
 });
 
 const chatAboutLegalDocumentFlow = ai.defineFlow(
