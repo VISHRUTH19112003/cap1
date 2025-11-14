@@ -31,24 +31,8 @@ service cloud.firestore {
      * @principle Enforces document ownership for writes, restricts access to a user's own data tree, and validates relational integrity between documents.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if false;
-
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
+      allow get, update, delete: if request.auth.uid == userId;
+      allow create: if request.auth.uid == userId && request.resource.data.id == userId;
 
       /**
        * @description Controls access to user documents.
@@ -60,41 +44,25 @@ service cloud.firestore {
        * @principle Enforces document ownership for writes, restricts access to a user's own data tree, and validates relational integrity between documents.
        */
       match /documents/{documentId} {
-        allow list: if isOwner(userId);
-        allow get: if isOwner(userId);
-        allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
-        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-        allow delete: if isExistingOwner(userId);
-      }
-    }
-
-    /**
-     * @description Controls access to user application settings.
-     * @path /users/{userId}/applicationSettings/{settingId}
-     * @allow (create) - Authenticated user can create application settings under their userId if the setting's userId matches the path.
-     * @allow (get, list, update, delete) - Authenticated user can get, list, update, and delete their own application settings if the setting's userId matches their auth UID.
-     * @deny (create) - User cannot create application settings with a userId that does not match their auth UID.
-     * @deny (update, delete) - User cannot update or delete another user's application settings.
-     * @principle Enforces document ownership for writes, restricts access to a user's own data tree, and validates relational integrity between documents.
-     */
-    match /users/{userId}/applicationSettings/{settingId} {
-      function isSignedIn() {
-        return request.auth != null;
+        allow list, get: if request.auth.uid == userId;
+        allow create: if request.auth.uid == userId && request.resource.data.userId == userId;
+        allow update, delete: if request.auth.uid == userId && resource.data.userId == userId;
       }
 
-      function isOwner(userId) {
-        return request.auth.uid == userId;
+      /**
+       * @description Controls access to user application settings.
+       * @path /users/{userId}/applicationSettings/{settingId}
+       * @allow (create) - Authenticated user can create application settings under their userId if the setting's userId matches the path.
+       * @allow (get, list, update, delete) - Authenticated user can get, list, update, and delete their own application settings if the setting's userId matches their auth UID.
+       * @deny (create) - User cannot create application settings with a userId that does not match their auth UID.
+       * @deny (update, delete) - User cannot update or delete another user's application settings.
+       * @principle Enforces document ownership for writes, restricts access to a user's own data tree, and validates relational integrity between documents.
+       */
+      match /applicationSettings/{settingId} {
+        allow list, get: if request.auth.uid == userId;
+        allow create: if request.auth.uid == userId && request.resource.data.userId == userId;
+        allow update, delete: if request.auth.uid == userId && resource.data.userId == userId;
       }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-      allow delete: if isExistingOwner(userId);
     }
   }
 }
