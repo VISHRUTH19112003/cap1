@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Bot, Loader2, Sparkles, Download, Upload } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
+import * as pdfjs from 'pdfjs-dist';
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,6 +16,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Input } from '@/components/ui/input'
+
+// Required for pdfjs-dist
+if (typeof window !== 'undefined') {
+  pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+}
+
 
 const formSchema = z.object({
   prompt: z.string().min(10, { message: 'Please enter a prompt with at least 10 characters.' }),
@@ -67,33 +74,64 @@ export function ArgumentForm() {
     URL.revokeObjectURL(url)
   }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
     if (file.type === 'text/plain') {
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onload = (e) => {
-        const text = e.target?.result as string
-        form.setValue('prompt', text)
+        const text = e.target?.result as string;
+        form.setValue('prompt', text);
         toast({
           title: 'File Content Loaded',
           description: `${file.name} content has been loaded into the text area.`,
-        })
+        });
+      };
+      reader.readAsText(file);
+    } else if (file.type === 'application/pdf') {
+      try {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const arrayBuffer = e.target?.result as ArrayBuffer;
+          if (!arrayBuffer) return;
+          
+          const loadingTask = pdfjs.getDocument(arrayBuffer);
+          const pdf = await loadingTask.promise;
+          let fullText = '';
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            fullText += textContent.items.map(item => 'str' in item ? item.str : '').join(' ');
+          }
+          form.setValue('prompt', fullText);
+          toast({
+            title: 'PDF Content Loaded',
+            description: `${file.name} content has been extracted and loaded.`,
+          });
+        };
+        reader.readAsArrayBuffer(file);
+      } catch (error) {
+        console.error('Error parsing PDF:', error);
+        toast({
+          variant: 'destructive',
+          title: 'PDF Parsing Failed',
+          description: 'Could not extract text from the PDF file.',
+        });
       }
-      reader.readAsText(file)
     } else {
       toast({
         variant: 'destructive',
         title: 'Unsupported File Type',
-        description: 'Please upload a .txt file.',
-      })
+        description: 'Please upload a .txt or .pdf file.',
+      });
     }
+    
     // Reset file input
-    if(fileInputRef.current) {
-        fileInputRef.current.value = ''
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
-  }
+  };
 
 
   return (
@@ -125,7 +163,7 @@ export function ArgumentForm() {
                             className="hidden"
                             ref={fileInputRef}
                             onChange={handleFileChange}
-                            accept=".txt"
+                            accept=".txt,.pdf"
                         />
                       </FormControl>
                     </div>
